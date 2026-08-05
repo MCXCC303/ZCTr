@@ -80,10 +80,21 @@ export async function setProviderApiKey(
       }
     }
     if (apiKey) {
-      const login = Cc["@mozilla.org/login-manager/loginInfo;1"].createInstance(
-        Ci.nsILoginInfo,
+      // LoginInfo (LoginHelper) sets httpRealm/formActionOrigin to null
+      // explicitly, avoiding nsILoginInfo.init() argument-mapping quirks on
+      // Firefox 140 that otherwise trip LoginManager's _checkLogin.
+      const { LoginInfo } = ChromeUtils.importESModule(
+        "resource://gre/modules/LoginHelper.sys.mjs",
       );
-      login.init(KEY_HOST, "", "", keyName(providerId), apiKey, "", "");
+      const login = new LoginInfo(
+        KEY_HOST,
+        null,
+        null,
+        keyName(providerId),
+        apiKey,
+        null,
+        null,
+      );
       await (Services.logins as any).addLoginAsync(login);
     }
   } catch (error) {
