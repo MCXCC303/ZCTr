@@ -17,6 +17,7 @@ import {
 	OLLAMA_DEFAULT_PORT,
 	PROVIDER_TYPES,
 	PROVIDER_TYPE_LABELS,
+	TARGET_LANGUAGES,
 	generateProviderId,
 	getProviderApiKey,
 	getProviders,
@@ -315,18 +316,6 @@ function deleteCurrent(): void {
 	renderProviderList();
 }
 
-function saveTargetLang(): void {
-	if (!doc) {
-		return;
-	}
-	const lang = inputValue("zctr-input-targetlang").trim();
-	if (!lang) {
-		win?.alert("目标语言不能为空，请输入语言代码，如 zh。");
-		return;
-	}
-	setPref(PREFS.TARGET_LANG, lang);
-}
-
 async function testOllama(): Promise<void> {
 	const status = doc?.getElementById("zctr-ollama-status") as HTMLElement | null;
 	if (!status) {
@@ -359,6 +348,27 @@ function bindGlobalSettings(): void {
 	if (!doc) {
 		return;
 	}
+	// Target language dropdown: populated from TARGET_LANGUAGES, saved on
+	// change (no separate save button)
+	const langSelect = doc.getElementById(
+		"zctr-input-targetlang",
+	) as HTMLSelectElement | null;
+	if (langSelect) {
+		for (const lang of TARGET_LANGUAGES) {
+			const option = doc.createElementNS(XHTML_NS, "option") as HTMLOptionElement;
+			option.value = lang.code;
+			option.textContent = lang.label;
+			langSelect.append(option);
+		}
+		const current = (getPref(PREFS.TARGET_LANG) as string) || "zh";
+		langSelect.value = TARGET_LANGUAGES.some((l) => l.code === current)
+			? current
+			: "zh";
+		langSelect.addEventListener("change", () => {
+			setPref(PREFS.TARGET_LANG, langSelect.value);
+		});
+	}
+
 	const streamingInput = doc.getElementById(
 		"zctr-input-streaming",
 	) as HTMLInputElement | null;
@@ -382,9 +392,6 @@ function bindButtons(): void {
 	doc.getElementById("zctr-btn-save")?.addEventListener("click", saveCurrent);
 	doc.getElementById("zctr-btn-active")?.addEventListener("click", setActiveCurrent);
 	doc.getElementById("zctr-btn-delete")?.addEventListener("click", deleteCurrent);
-	doc
-		.getElementById("zctr-btn-save-targetlang")
-		?.addEventListener("click", saveTargetLang);
 	doc.getElementById("zctr-btn-test-ollama")?.addEventListener("click", testOllama);
 
 	// Type switch: adapt the form fields

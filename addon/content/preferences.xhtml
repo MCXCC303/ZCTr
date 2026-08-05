@@ -120,20 +120,10 @@
             </label>
             <hbox align="center">
                 <label flex="1">目标语言</label>
-                <html:input
-                        id="zctr-input-targetlang"
-                        placeholder="zh"
-                        style="width: 120px"
-                />
-                <button
-                        id="zctr-btn-save-targetlang"
-                        label="保存"
-                        style="margin-left: 8px"
-                />
+                <html:select id="zctr-input-targetlang" style="width: 160px">
+                    <!-- Options populated by JS from TARGET_LANGUAGES -->
+                </html:select>
             </hbox>
-            <label style="color: #888; margin-top: 4px">
-                目标语言使用语言代码，如 zh（中文）、en（英文）、ja（日文）等
-            </label>
             <hbox align="center" style="margin-top: 10px">
                 <html:input
                         id="zctr-input-streaming"
