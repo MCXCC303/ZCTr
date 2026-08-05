@@ -7,3 +7,7 @@ pref("activeProviderId", "");
 pref("targetLang", "zh");
 // 使用流式输出（SSE，逐字显示翻译结果）
 pref("streaming", true);
+// 持久化翻译缓存（写入 Zotero 数据目录，重启后保留）
+pref("cachePersist", false);
+// 缓存队列长度
+pref("cacheLimit", 50);

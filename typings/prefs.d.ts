@@ -11,6 +11,8 @@ declare namespace _ZoteroTypes {
       "activeProviderId": string;
       "targetLang": string;
       "streaming": boolean;
+      "cachePersist": boolean;
+      "cacheLimit": number;
     };
   }
 }

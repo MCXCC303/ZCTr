@@ -378,6 +378,34 @@ function bindGlobalSettings(): void {
 			setPref(PREFS.STREAMING, streamingInput.checked);
 		});
 	}
+
+	// Persisted cache toggle
+	const cachePersistInput = doc.getElementById(
+		"zctr-input-cache-persist",
+	) as HTMLInputElement | null;
+	if (cachePersistInput) {
+		cachePersistInput.checked = !!getPref(PREFS.CACHE_PERSIST);
+		cachePersistInput.addEventListener("change", () => {
+			setPref(PREFS.CACHE_PERSIST, cachePersistInput.checked);
+		});
+	}
+
+	// Cache queue length
+	const cacheLimitInput = doc.getElementById(
+		"zctr-input-cache-limit",
+	) as HTMLInputElement | null;
+	if (cacheLimitInput) {
+		const current = (getPref(PREFS.CACHE_LIMIT) as number) || 50;
+		cacheLimitInput.value = String(current);
+		cacheLimitInput.addEventListener("change", () => {
+			const v = parseInt(cacheLimitInput.value, 10);
+			if (Number.isFinite(v) && v > 0) {
+				setPref(PREFS.CACHE_LIMIT, v);
+			} else {
+				cacheLimitInput.value = String(current);
+			}
+		});
+	}
 }
 
 function bindButtons(): void {

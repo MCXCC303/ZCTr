@@ -12,6 +12,10 @@ export const PREFS = {
 	TARGET_LANG: "targetLang",
 	/** Whether to use streaming (SSE) translation output. */
 	STREAMING: "streaming",
+	/** Whether the translation cache is persisted across sessions. */
+	CACHE_PERSIST: "cachePersist",
+	/** Translation cache queue length. */
+	CACHE_LIMIT: "cacheLimit",
 } as const;
 
 export type PrefKey = (typeof PREFS)[keyof typeof PREFS];

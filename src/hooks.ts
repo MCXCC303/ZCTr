@@ -4,6 +4,7 @@ import {
 	unregisterReaderTranslate,
 } from "./modules/reader/translate-popup";
 import {registerPrefsScripts} from "./modules/preferences/prefs-ui";
+import {translationCache} from "./modules/translate/cache";
 
 async function onStartup() {
 	Zotero.debug("[ZCTr] onStartup begin");
@@ -25,6 +26,9 @@ async function onStartup() {
 
 	// Register reader context menu entries (global, not per window)
 	registerReaderTranslate();
+
+	// Preload the persisted translation cache (fire-and-forget)
+	void translationCache.load();
 
 	// Initialize per-window toolkits
 	await Promise.all(

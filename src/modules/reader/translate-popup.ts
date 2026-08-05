@@ -22,11 +22,8 @@ import {
 	translateText,
 	translateTextStreaming,
 } from "../translate/translator";
-import {TranslationCache} from "../translate/cache";
+import {translationCache} from "../translate/cache";
 import {PREFS, getPref} from "../../utils/prefs";
-
-/** Session-scoped LRU cache of recent translations (default 50 entries). */
-const translationCache = new TranslationCache();
 
 const POPUP_ID = "zctr-translate-popup";
 const MAX_SOURCE_LENGTH = 8000;
@@ -385,12 +382,12 @@ function openTranslatePopup(
 	startTranslation(entry, result, cacheBadge, text);
 }
 
-function startTranslation(
+async function startTranslation(
 	entry: ReaderEntry,
 	result: HTMLElement,
 	cacheBadge: HTMLElement,
 	text: string,
-): void {
+): Promise<void> {
 	const provider = getActiveProvider();
 	if (!provider) {
 		result.textContent =
@@ -405,7 +402,7 @@ function startTranslation(
 		!!popupStates.get(entry.doc)?.el?.contains(result);
 
 	// Local cache hit: show the previous translation instantly
-	const cached = translationCache.get(text, targetLang, provider.id);
+	const cached = await translationCache.get(text, targetLang, provider.id);
 	if (cached !== null) {
 		Zotero.debug(`[ZCTr] cache hit: ${cached.length} chars`);
 		cacheBadge.hidden = false;
@@ -441,7 +438,7 @@ function startTranslation(
 
 	const cachePut = (translation: string): void => {
 		if (translation) {
-			translationCache.put(text, targetLang, provider.id, translation);
+			void translationCache.put(text, targetLang, provider.id, translation);
 		}
 	};
 
