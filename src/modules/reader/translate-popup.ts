@@ -33,6 +33,7 @@ type ViewLike = {
 };
 
 type ReaderLike = {
+	itemID?: number;
 	_iframeWindow?: Window;
 	_internalReader?: {
 		_primaryView?: ViewLike;
@@ -42,7 +43,7 @@ type ReaderLike = {
 
 type ContextMenuEvent = {
 	reader?: ReaderLike;
-	params?: { x?: number; y?: number };
+	params?: { x?: number; y?: number; ids?: string[] };
 	append?: (options: { label: string; onCommand: () => void }) => void;
 };
 
@@ -71,24 +72,27 @@ export function registerReaderTranslate(): void {
 		return;
 	}
 	// Guard against duplicate registration (e.g. when onStartup is re-run)
-	const listeners = (Zotero.Reader as any)._registeredListeners;
-	if (
-		Array.isArray(listeners) &&
+	const listeners = (Zotero.Reader as any)._registeredListeners ?? [];
+	const has = (type: string): boolean =>
 		listeners.some(
 			(l: any) =>
-				l.type === "createViewContextMenu" &&
-				l.pluginID === addon.data.config.addonID,
-		)
-	) {
-		ztoolkit.log("[ZCTr] Reader context menu entry already registered");
-		return;
+				l.type === type && l.pluginID === addon.data.config.addonID,
+		);
+	if (!has("createViewContextMenu")) {
+		Zotero.Reader.registerEventListener(
+			"createViewContextMenu",
+			handleViewContextMenu as never,
+			addon.data.config.addonID,
+		);
 	}
-	Zotero.Reader.registerEventListener(
-		"createViewContextMenu",
-		handleViewContextMenu as never,
-		addon.data.config.addonID,
-	);
-	ztoolkit.log("[ZCTr] Reader context menu entry registered");
+	if (!has("createAnnotationContextMenu")) {
+		Zotero.Reader.registerEventListener(
+			"createAnnotationContextMenu",
+			handleAnnotationContextMenu as never,
+			addon.data.config.addonID,
+		);
+	}
+	ztoolkit.log("[ZCTr] Reader context menu entries registered");
 }
 
 export function unregisterReaderTranslate(): void {
@@ -98,6 +102,10 @@ export function unregisterReaderTranslate(): void {
 	Zotero.Reader.unregisterEventListener(
 		"createViewContextMenu",
 		handleViewContextMenu as never,
+	);
+	Zotero.Reader.unregisterEventListener(
+		"createAnnotationContextMenu",
+		handleAnnotationContextMenu as never,
 	);
 	closePopup();
 	ztoolkit.log("[ZCTr] Reader context menu entry unregistered");
@@ -140,6 +148,78 @@ function getSelectedText(view: ViewLike | undefined): string {
 		ztoolkit.log("[ZCTr] Failed to read logical selection:", error);
 	}
 	return "";
+}
+
+/**
+ * Collect the text of the annotations a context menu was opened on.
+ * Each annotation contributes its highlighted text plus its comment.
+ */
+function getAnnotationText(
+	reader: ReaderLike | undefined,
+	ids: string[] | undefined,
+): string {
+	if (!ids?.length || !reader?.itemID) {
+		return "";
+	}
+	const attachment = Zotero.Items.get(reader.itemID);
+	if (!attachment) {
+		return "";
+	}
+	const parts: string[] = [];
+	for (const key of ids) {
+		const annotation = Zotero.Items.getByLibraryAndKey(
+			attachment.libraryID,
+			key,
+		);
+		if (!annotation) {
+			continue;
+		}
+		const text = (annotation.annotationText || "").trim();
+		const comment = (annotation.annotationComment || "").trim();
+		if (text && comment) {
+			parts.push(`${text}\n\n(${comment})`);
+		} else if (text || comment) {
+			parts.push(text || comment);
+		}
+	}
+	return parts.join("\n\n---\n\n");
+}
+
+/**
+ * "ZCTr 翻译" entry on the annotation context menu (right-click on
+ * highlighted/underlined text). Translates the annotation's text.
+ */
+function handleAnnotationContextMenu(event: ContextMenuEvent): void {
+	const reader = event.reader;
+	const text = getAnnotationText(reader, event.params?.ids);
+	if (!text) {
+		return;
+	}
+	const internal = reader?._internalReader;
+	const view = internal?._lastView || internal?._primaryView;
+	const doc = reader?._iframeWindow?.document;
+	const iframeWin = view?._iframeWindow;
+	if (!doc || !iframeWin) {
+		return;
+	}
+
+	const id = ++readerIdCounter;
+	readerRegistry.set(id, {view, doc, iframeWin});
+	if (readerRegistry.size > REGISTRY_LIMIT) {
+		readerRegistry.delete(readerRegistry.keys().next().value as number);
+	}
+
+	const {x, y} = event.params || {};
+	event.append?.({
+		label: "ZCTr 翻译",
+		onCommand: () => {
+			const entry = readerRegistry.get(id);
+			readerRegistry.delete(id);
+			if (entry) {
+				openTranslatePopup(entry, text.slice(0, MAX_SOURCE_LENGTH), x, y);
+			}
+		},
+	});
 }
 
 function handleViewContextMenu(event: ContextMenuEvent): void {
