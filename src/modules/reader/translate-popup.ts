@@ -22,7 +22,7 @@ import {
   translateText,
   translateTextStreaming,
 } from "../translate/translator";
-import { getPref } from "../../utils/prefs";
+import { PREFS, getPref } from "../../utils/prefs";
 
 const POPUP_ID = "zctr-translate-popup";
 const MAX_SOURCE_LENGTH = 8000;
@@ -379,8 +379,8 @@ function startTranslation(
       "⚠ 未配置翻译供应商，请到 Zotero 设置 → ZCTr 中添加并激活一个供应商。";
     return;
   }
-  const targetLang = (getPref("targetLang") as string) || "zh";
-  const streaming = getPref("streaming") !== false;
+  const targetLang = (getPref(PREFS.TARGET_LANG) as string) || "zh";
+  const streaming = getPref(PREFS.STREAMING) !== false;
   Zotero.debug(`[ZCTr] startTranslation: streaming=${streaming} targetLang=${targetLang}`);
 
   const isVisible = (): boolean =>

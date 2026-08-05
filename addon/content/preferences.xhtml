@@ -3,9 +3,9 @@
 >
   <hbox flex="1" style="min-height: 400px">
     <!-- 左栏：供应商列表 -->
-    <vbox style="width: 240px; margin-right: 12px">
-      <label><html:h3>供应商</html:h3></label>
-      <html:div
+    <vbox style="width: 260px; margin-right: 12px">
+      <label><h3>供应商</h3></label>
+      <div
         id="zctr-provider-list"
         style="
           flex: 1;
@@ -15,7 +15,7 @@
           overflow-y: auto;
           min-height: 200px;
         "
-      ></html:div>
+      ></div>
       <button
         id="zctr-btn-add"
         label="添加供应商"
@@ -25,32 +25,83 @@
 
     <!-- 右栏：供应商表单 -->
     <vbox flex="1">
-      <label><html:h3>供应商配置</html:h3></label>
-      <label>名称</label>
+      <label><h3>供应商配置</h3></label>
+
+      <label>供应商类型</label>
+      <html:select id="zctr-input-type" style="width: 100%">
+        <html:option value="openai">OpenAI 兼容</html:option>
+        <html:option value="deepseek">DeepSeek</html:option>
+        <html:option value="ollama">Ollama</html:option>
+      </html:select>
+
+      <label style="margin-top: 8px">名称</label>
       <html:input
         id="zctr-input-name"
-        placeholder="如: OpenAI / DeepSeek / 本地 Ollama"
+        placeholder="如: 我的 DeepSeek / 本地 Ollama"
         style="width: 100%"
       />
-      <label style="margin-top: 8px">API Base URL</label>
-      <html:input
-        id="zctr-input-baseurl"
-        placeholder="https://api.openai.com/v1"
-        style="width: 100%"
-      />
-      <label style="margin-top: 8px">API Key</label>
-      <html:input
-        id="zctr-input-apikey"
-        type="password"
-        placeholder="sk-..."
-        style="width: 100%"
-      />
-      <label style="margin-top: 8px">模型</label>
-      <html:input
-        id="zctr-input-model"
-        placeholder="gpt-4o-mini"
-        style="width: 100%"
-      />
+
+      <!-- OpenAI 兼容：API Base URL -->
+      <vbox id="zctr-field-baseurl">
+        <label style="margin-top: 8px">API Base URL</label>
+        <html:input
+          id="zctr-input-baseurl"
+          placeholder="https://api.openai.com/v1"
+          style="width: 100%"
+        />
+      </vbox>
+
+      <!-- DeepSeek：模型下拉 -->
+      <vbox id="zctr-field-model-select">
+        <label style="margin-top: 8px">模型</label>
+        <html:select id="zctr-input-model-select" style="width: 100%">
+          <html:option value="deepseek-v4-pro">deepseek-v4-pro</html:option>
+          <html:option value="deepseek-v4-flash">deepseek-v4-flash</html:option>
+        </html:select>
+      </vbox>
+
+      <!-- OpenAI 兼容 / Ollama：模型文本输入 -->
+      <vbox id="zctr-field-model">
+        <label style="margin-top: 8px">模型</label>
+        <html:input
+          id="zctr-input-model"
+          placeholder="如: llama3.2 / gpt-4o-mini"
+          style="width: 100%"
+        />
+      </vbox>
+
+      <!-- Ollama：端口 + 连通性检测 -->
+      <vbox id="zctr-field-port">
+        <label style="margin-top: 8px">Ollama 端口</label>
+        <hbox align="center">
+          <html:input
+            id="zctr-input-port"
+            type="number"
+            value="11434"
+            style="width: 120px"
+          />
+          <button
+            id="zctr-btn-test-ollama"
+            label="测试连接"
+            style="margin-left: 8px"
+          />
+        </hbox>
+        <label
+          id="zctr-ollama-status"
+          style="color: #888; margin-top: 4px"
+        ></label>
+      </vbox>
+
+      <!-- API Key（Ollama 不需要） -->
+      <vbox id="zctr-field-apikey">
+        <label style="margin-top: 8px">API Key</label>
+        <html:input
+          id="zctr-input-apikey"
+          type="password"
+          placeholder="sk-..."
+          style="width: 100%"
+        />
+      </vbox>
 
       <hbox style="margin-top: 16px">
         <button id="zctr-btn-save" label="保存" />
@@ -60,10 +111,10 @@
 
       <separator style="margin-top: 24px" />
 
-      <label><html:h3>翻译设置</html:h3></label>
+      <label><h3>翻译设置</h3></label>
       <hbox align="center">
         <label flex="1">目标语言</label>
-        <html:input
+        <input
           id="zctr-input-targetlang"
           placeholder="zh"
           style="width: 120px"

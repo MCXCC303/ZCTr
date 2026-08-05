@@ -11,10 +11,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/thf/zotero-click-on-translate.git"
+    "url": "git+https://github.com/MCXCC303/zotero-click-on-translate.git"
   },
-  "homepage": "https://github.com/thf/zotero-click-on-translate#readme",
-  "author": "thf",
+  "homepage": "https://github.com/MCXCC303/zotero-click-on-translate#readme",
+  "author": "MCXCC303",
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "start": "zotero-plugin serve",

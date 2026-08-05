@@ -4,16 +4,30 @@
  * The pane skeleton lives in addon/content/preferences.xhtml and calls
  * Zotero.ZCTr.hooks.onPrefsEvent('load', { window }) on load; this module
  * renders the provider list and binds the form.
+ *
+ * The provider form is type-driven: the first field selects the provider
+ * type (openai / deepseek / ollama) and the remaining fields adapt to it:
+ * - openai:   name + API Base URL + API Key + model (free text)
+ * - deepseek: name + API Key + model (built-in base URL, model dropdown)
+ * - ollama:   name + port + model (no API key, with connectivity test)
  */
 
 import {
+  DEEPSEEK_MODELS,
+  OLLAMA_DEFAULT_PORT,
+  PROVIDER_TYPES,
+  PROVIDER_TYPE_LABELS,
   generateProviderId,
+  getProviderApiKey,
   getProviders,
   saveProviders,
   setActiveProvider,
+  setProviderApiKey,
+  testOllamaConnection,
   type ProviderConfig,
+  type ProviderType,
 } from "../translate/translator";
-import { getPref, setPref } from "../../utils/prefs";
+import { PREFS, getPref, setPref } from "../../utils/prefs";
 
 const XHTML_NS = "http://www.w3.org/1999/xhtml";
 
@@ -44,7 +58,7 @@ export async function registerPrefsScripts(window: Window): Promise<void> {
 }
 
 function getActiveId(): string {
-  return (getPref("activeProviderId") as string) || "";
+  return (getPref(PREFS.ACTIVE_PROVIDER_ID) as string) || "";
 }
 
 function inputValue(id: string): string {
@@ -55,6 +69,24 @@ function setInputValue(id: string, value: string): void {
   const el = doc?.getElementById(id) as HTMLInputElement | null;
   if (el) {
     el.value = value;
+  }
+}
+
+function selectValue(id: string): string {
+  return (doc?.getElementById(id) as HTMLSelectElement | null)?.value ?? "";
+}
+
+function setSelectValue(id: string, value: string): void {
+  const el = doc?.getElementById(id) as HTMLSelectElement | null;
+  if (el) {
+    el.value = value;
+  }
+}
+
+function setVisible(id: string, visible: boolean): void {
+  const el = doc?.getElementById(id) as HTMLElement | null;
+  if (el) {
+    el.hidden = !visible;
   }
 }
 
@@ -109,7 +141,12 @@ function renderProviderList(): void {
         : "",
       editingId === provider.id ? "outline: 1px solid var(--fill-tertiary, #aaa);" : "",
     ].join("; "));
-    const name = hEl("span", provider.name, "overflow: hidden; text-overflow: ellipsis; white-space: nowrap;");
+    const typeLabel = PROVIDER_TYPE_LABELS[provider.type] || provider.type;
+    const name = hEl(
+      "span",
+      `${provider.name} - ${typeLabel}`,
+      "overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
+    );
     const mark = hEl("span", provider.id === activeId ? "● 激活" : "");
     mark.style.cssText = "font-size: 11px; color: #2f7cde; margin-left: 6px; flex-shrink: 0;";
     item.append(name, mark);
@@ -123,24 +160,110 @@ function renderProviderList(): void {
   }
 }
 
+/** Show/hide form fields according to the provider type. */
+function updateFormVisibility(type: ProviderType): void {
+  setVisible("zctr-field-baseurl", type === "openai");
+  setVisible("zctr-field-model-select", type === "deepseek");
+  setVisible("zctr-field-model", type !== "deepseek");
+  setVisible("zctr-field-port", type === "ollama");
+  setVisible("zctr-field-apikey", type !== "ollama");
+}
+
 function loadForm(provider: ProviderConfig | null): void {
+  const type: ProviderType = provider?.type || "openai";
+  setSelectValue("zctr-input-type", type);
   setInputValue("zctr-input-name", provider?.name ?? "");
   setInputValue("zctr-input-baseurl", provider?.apiBaseUrl ?? "");
-  setInputValue("zctr-input-apikey", provider?.apiKey ?? "");
-  setInputValue("zctr-input-model", provider?.model ?? "");
-  setInputValue("zctr-input-targetlang", (getPref("targetLang") as string) || "zh");
+  // API keys live in the login manager, not in the provider JSON
+  setInputValue("zctr-input-apikey", provider ? getProviderApiKey(provider.id) : "");
+  setInputValue(
+    "zctr-input-model",
+    provider?.type === "deepseek" ? "" : (provider?.model ?? ""),
+  );
+  setSelectValue(
+    "zctr-input-model-select",
+    provider?.model || DEEPSEEK_MODELS[0],
+  );
+  setInputValue(
+    "zctr-input-port",
+    String(provider?.port || OLLAMA_DEFAULT_PORT),
+  );
+  const status = doc?.getElementById("zctr-ollama-status") as HTMLElement | null;
+  if (status) {
+    status.textContent = "";
+  }
+  updateFormVisibility(type);
 }
 
 function validateForm(): ProviderConfig | null {
-  const name = inputValue("zctr-input-name").trim();
-  const apiBaseUrl = inputValue("zctr-input-baseurl").trim().replace(/\/+$/, "");
-  const apiKey = inputValue("zctr-input-apikey").trim();
-  const model = inputValue("zctr-input-model").trim();
-  if (!name || !apiBaseUrl) {
-    win?.alert("名称和 API Base URL 不能为空。");
+  if (!doc) {
     return null;
   }
-  return { id: editingId ?? generateProviderId(), name, apiBaseUrl, apiKey, model };
+  const type = selectValue("zctr-input-type") as ProviderType;
+  const name = inputValue("zctr-input-name").trim();
+  if (!name) {
+    win?.alert("名称不能为空。");
+    return null;
+  }
+  const base: ProviderConfig = {
+    id: editingId ?? generateProviderId(),
+    type,
+    name,
+  };
+  switch (type) {
+    case "openai": {
+      const apiBaseUrl = inputValue("zctr-input-baseurl").trim().replace(/\/+$/, "");
+      const model = inputValue("zctr-input-model").trim();
+      if (!apiBaseUrl) {
+        win?.alert("API Base URL 不能为空。");
+        return null;
+      }
+      if (!model) {
+        win?.alert("模型不能为空。");
+        return null;
+      }
+      return {
+        ...base,
+        apiBaseUrl,
+        apiKey: inputValue("zctr-input-apikey").trim(),
+        model,
+      };
+    }
+    case "deepseek": {
+      const model = selectValue("zctr-input-model-select");
+      return {
+        ...base,
+        apiKey: inputValue("zctr-input-apikey").trim(),
+        model: model || DEEPSEEK_MODELS[0],
+      };
+    }
+    case "ollama": {
+      const model = inputValue("zctr-input-model").trim();
+      if (!model) {
+        win?.alert("模型不能为空。");
+        return null;
+      }
+      const port = parseInt(inputValue("zctr-input-port") || "", 10);
+      return {
+        ...base,
+        port: Number.isFinite(port) ? port : OLLAMA_DEFAULT_PORT,
+        model,
+      };
+    }
+  }
+}
+
+/** Store the API key in the login manager, then persist the provider. */
+function persistProvider(provider: ProviderConfig): void {
+  setProviderApiKey(provider.id, provider.apiKey || "");
+  const providers = getProviders();
+  const index = providers.findIndex((p) => p.id === provider.id);
+  if (index >= 0) {
+    providers[index] = provider;
+  } else {
+    providers.push(provider);
+  }
+  saveProviders(providers);
 }
 
 function saveCurrent(): void {
@@ -151,16 +274,10 @@ function saveCurrent(): void {
   if (!provider) {
     return;
   }
-  const providers = getProviders();
-  const index = providers.findIndex((p) => p.id === provider.id);
-  if (index >= 0) {
-    providers[index] = provider;
-  } else {
-    providers.push(provider);
-  }
-  saveProviders(providers);
+  persistProvider(provider);
 
   // Auto-activate the first provider if none is active yet
+  const providers = getProviders();
   if (!getActiveId() && providers.length) {
     setActiveProvider(providers[0].id);
   }
@@ -177,14 +294,7 @@ function setActiveCurrent(): void {
   if (!provider) {
     return;
   }
-  const providers = getProviders();
-  const index = providers.findIndex((p) => p.id === provider.id);
-  if (index >= 0) {
-    providers[index] = provider;
-  } else {
-    providers.push(provider);
-  }
-  saveProviders(providers);
+  persistProvider(provider);
   editingId = provider.id;
   setActiveProvider(editingId);
   renderProviderList();
@@ -214,7 +324,34 @@ function saveTargetLang(): void {
     win?.alert("目标语言不能为空，请输入语言代码，如 zh。");
     return;
   }
-  setPref("targetLang", lang);
+  setPref(PREFS.TARGET_LANG, lang);
+}
+
+async function testOllama(): Promise<void> {
+  const status = doc?.getElementById("zctr-ollama-status") as HTMLElement | null;
+  if (!status) {
+    return;
+  }
+  const port = parseInt(inputValue("zctr-input-port") || "", 10);
+  const portValue = Number.isFinite(port) ? port : OLLAMA_DEFAULT_PORT;
+  status.textContent = "检测中…";
+  status.style.color = "#888";
+  try {
+    const models = await testOllamaConnection(portValue);
+    if (models.length) {
+      const names = models
+        .slice(0, 5)
+        .map((m) => (m.parameterSize ? `${m.name} (${m.parameterSize})` : m.name))
+        .join(", ");
+      status.textContent = `✓ 连接成功，检测到 ${models.length} 个模型：${names}${models.length > 5 ? "…" : ""}`;
+    } else {
+      status.textContent = "✓ 连接成功（未检测到已安装的模型）";
+    }
+    status.style.color = "#2f7cde";
+  } catch (error) {
+    status.textContent = `✗ 连接失败：${(error as Error).message}`;
+    status.style.color = "#c0392b";
+  }
 }
 
 /** Bind the global translation settings (target language, streaming toggle). */
@@ -226,9 +363,9 @@ function bindGlobalSettings(): void {
     "zctr-input-streaming",
   ) as HTMLInputElement | null;
   if (streamingInput) {
-    streamingInput.checked = !!getPref("streaming");
+    streamingInput.checked = !!getPref(PREFS.STREAMING);
     streamingInput.addEventListener("change", () => {
-      setPref("streaming", streamingInput.checked);
+      setPref(PREFS.STREAMING, streamingInput.checked);
     });
   }
 }
@@ -248,4 +385,36 @@ function bindButtons(): void {
   doc
     .getElementById("zctr-btn-save-targetlang")
     ?.addEventListener("click", saveTargetLang);
+  doc.getElementById("zctr-btn-test-ollama")?.addEventListener("click", testOllama);
+
+  // Type switch: adapt the form fields
+  const typeSelect = doc.getElementById("zctr-input-type") as HTMLSelectElement | null;
+  if (typeSelect) {
+    typeSelect.addEventListener("change", () => {
+      updateFormVisibility(typeSelect.value as ProviderType);
+      // Clear type-specific fields when switching
+      setInputValue("zctr-input-baseurl", "");
+      setInputValue("zctr-input-apikey", "");
+      setInputValue("zctr-input-model", "");
+      setSelectValue("zctr-input-model-select", DEEPSEEK_MODELS[0]);
+      setInputValue("zctr-input-port", String(OLLAMA_DEFAULT_PORT));
+      const status = doc?.getElementById("zctr-ollama-status") as HTMLElement | null;
+      if (status) {
+        status.textContent = "";
+      }
+    });
+  }
+
+  // Keep the type list in sync with PROVIDER_TYPES
+  if (typeSelect) {
+    const options = [...(typeSelect.options as unknown as HTMLOptionElement[])];
+    for (const type of PROVIDER_TYPES) {
+      if (!options.some((o) => o.value === type)) {
+        const option = doc.createElementNS(XHTML_NS, "option") as HTMLOptionElement;
+        option.value = type;
+        option.textContent = PROVIDER_TYPE_LABELS[type];
+        typeSelect.append(option);
+      }
+    }
+  }
 }
