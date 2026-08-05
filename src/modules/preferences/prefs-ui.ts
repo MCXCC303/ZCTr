@@ -28,7 +28,7 @@ import {
 	type ProviderConfig,
 	type ProviderType,
 } from "../translate/translator";
-import {PREFS, getPref, setPref} from "../../utils/prefs";
+import {PREFS, getPref, setPref, type PrefKey} from "../../utils/prefs";
 
 const XHTML_NS = "http://www.w3.org/1999/xhtml";
 
@@ -390,22 +390,26 @@ function bindGlobalSettings(): void {
 		});
 	}
 
-	// Cache queue length (-1 means unlimited)
-	const cacheLimitInput = doc.getElementById(
-		"zctr-input-cache-limit",
-	) as HTMLInputElement | null;
-	if (cacheLimitInput) {
-		const current = (getPref(PREFS.CACHE_LIMIT) as number) || 50;
-		cacheLimitInput.value = String(current);
-		cacheLimitInput.addEventListener("change", () => {
-			const v = parseInt(cacheLimitInput.value, 10);
+	// Cache queue lengths (-1 means unlimited). Memory and persisted queues
+	// have independent limits.
+	const bindCacheLimit = (inputId: string, prefKey: PrefKey, fallback: number): void => {
+		const input = doc?.getElementById(inputId) as HTMLInputElement | null;
+		if (!input) {
+			return;
+		}
+		const current = (getPref(prefKey) as number) || fallback;
+		input.value = String(current);
+		input.addEventListener("change", () => {
+			const v = parseInt(input.value, 10);
 			if (v === -1 || (Number.isFinite(v) && v > 0)) {
-				setPref(PREFS.CACHE_LIMIT, v);
+				setPref(prefKey, v);
 			} else {
-				cacheLimitInput.value = String(current);
+				input.value = String(current);
 			}
 		});
-	}
+	};
+	bindCacheLimit("zctr-input-cache-limit", PREFS.CACHE_LIMIT, 50);
+	bindCacheLimit("zctr-input-cache-persist-limit", PREFS.CACHE_PERSIST_LIMIT, 100);
 }
 
 function bindButtons(): void {

@@ -13,6 +13,7 @@ declare namespace _ZoteroTypes {
       "streaming": boolean;
       "cachePersist": boolean;
       "cacheLimit": number;
+      "cachePersistLimit": number;
     };
   }
 }

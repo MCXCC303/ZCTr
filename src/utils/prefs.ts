@@ -14,8 +14,10 @@ export const PREFS = {
 	STREAMING: "streaming",
 	/** Whether the translation cache is persisted across sessions. */
 	CACHE_PERSIST: "cachePersist",
-	/** Translation cache queue length. */
+	/** In-memory translation cache queue length. */
 	CACHE_LIMIT: "cacheLimit",
+	/** Persisted translation cache queue length. */
+	CACHE_PERSIST_LIMIT: "cachePersistLimit",
 } as const;
 
 export type PrefKey = (typeof PREFS)[keyof typeof PREFS];

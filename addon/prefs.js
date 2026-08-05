@@ -9,5 +9,7 @@ pref("targetLang", "zh");
 pref("streaming", true);
 // 持久化翻译缓存（写入 Zotero 数据目录，重启后保留）
 pref("cachePersist", false);
-// 缓存队列长度
+// 内存缓存队列长度
 pref("cacheLimit", 50);
+// 持久化缓存队列长度（仅写入文件的条目数上限）
+pref("cachePersistLimit", 100);

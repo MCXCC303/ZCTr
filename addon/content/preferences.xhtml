@@ -141,11 +141,20 @@
                 <label flex="1">持久化翻译缓存（重启后保留）</label>
             </hbox>
             <hbox align="center" style="margin-top: 8px">
-                <label flex="1">缓存队列长度</label>
+                <label flex="1">缓存队列长度（内存）</label>
                 <html:input
                         id="zctr-input-cache-limit"
                         type="number"
                         value="50"
+                        style="width: 80px"
+                />
+            </hbox>
+            <hbox align="center" style="margin-top: 8px">
+                <label flex="1">缓存队列长度（持久化）</label>
+                <html:input
+                        id="zctr-input-cache-persist-limit"
+                        type="number"
+                        value="100"
                         style="width: 80px"
                 />
             </hbox>
