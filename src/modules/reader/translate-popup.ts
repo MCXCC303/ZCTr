@@ -22,7 +22,11 @@ import {
 	translateText,
 	translateTextStreaming,
 } from "../translate/translator";
+import {TranslationCache} from "../translate/cache";
 import {PREFS, getPref} from "../../utils/prefs";
+
+/** Session-scoped LRU cache of recent translations (default 50 entries). */
+const translationCache = new TranslationCache();
 
 const POPUP_ID = "zctr-translate-popup";
 const MAX_SOURCE_LENGTH = 8000;
@@ -235,7 +239,20 @@ function openTranslatePopup(
 		event.stopPropagation();
 		closePopup();
 	});
-	header.append(title, closeBtn);
+	// Cache-hit badge shown in the header when the translation came from the
+	// local queue instead of a provider request
+	const cacheBadge = doc.createElement("span");
+	cacheBadge.textContent = "⚡ 缓存";
+	cacheBadge.title = "本次翻译来自本地缓存";
+	cacheBadge.style.cssText = [
+		"font-size: 11px",
+		"color: #2f7cde",
+		"margin-right: 6px",
+		"opacity: 0.85",
+		"flex-shrink: 0",
+	].join("; ");
+	cacheBadge.hidden = true;
+	header.append(title, cacheBadge, closeBtn);
 
 	// Drag the popup by its header via pointer events. Pointer events over the
 	// pdf.js viewer iframe never bubble to the reader document, so move/up
@@ -365,12 +382,13 @@ function openTranslatePopup(
 		},
 	});
 
-	startTranslation(entry, result, text);
+	startTranslation(entry, result, cacheBadge, text);
 }
 
 function startTranslation(
 	entry: ReaderEntry,
 	result: HTMLElement,
+	cacheBadge: HTMLElement,
 	text: string,
 ): void {
 	const provider = getActiveProvider();
@@ -385,6 +403,16 @@ function startTranslation(
 
 	const isVisible = (): boolean =>
 		!!popupStates.get(entry.doc)?.el?.contains(result);
+
+	// Local cache hit: show the previous translation instantly
+	const cached = translationCache.get(text, targetLang, provider.id);
+	if (cached !== null) {
+		Zotero.debug(`[ZCTr] cache hit: ${cached.length} chars`);
+		cacheBadge.hidden = false;
+		result.textContent = cached;
+		return;
+	}
+	cacheBadge.hidden = true;
 
 	const showError = (error: Error): void => {
 		if (!isVisible()) {
@@ -406,9 +434,15 @@ function startTranslation(
 		].join("; ");
 		retry.addEventListener("click", (event) => {
 			event.stopPropagation();
-			startTranslation(entry, result, text);
+			startTranslation(entry, result, cacheBadge, text);
 		});
 		result.append(retry);
+	};
+
+	const cachePut = (translation: string): void => {
+		if (translation) {
+			translationCache.put(text, targetLang, provider.id, translation);
+		}
 	};
 
 	if (streaming) {
@@ -421,6 +455,7 @@ function startTranslation(
 			.then((full) => {
 				if (isVisible() && full) {
 					result.textContent = full;
+					cachePut(full);
 				}
 			})
 			.catch(showError);
@@ -430,6 +465,7 @@ function startTranslation(
 			.then((translation) => {
 				if (isVisible()) {
 					result.textContent = translation;
+					cachePut(translation);
 				}
 			})
 			.catch(showError);
