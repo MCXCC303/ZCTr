@@ -390,7 +390,7 @@ function bindGlobalSettings(): void {
 		});
 	}
 
-	// Cache queue length
+	// Cache queue length (-1 means unlimited)
 	const cacheLimitInput = doc.getElementById(
 		"zctr-input-cache-limit",
 	) as HTMLInputElement | null;
@@ -399,7 +399,7 @@ function bindGlobalSettings(): void {
 		cacheLimitInput.value = String(current);
 		cacheLimitInput.addEventListener("change", () => {
 			const v = parseInt(cacheLimitInput.value, 10);
-			if (Number.isFinite(v) && v > 0) {
+			if (v === -1 || (Number.isFinite(v) && v > 0)) {
 				setPref(PREFS.CACHE_LIMIT, v);
 			} else {
 				cacheLimitInput.value = String(current);
