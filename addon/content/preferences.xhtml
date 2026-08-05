@@ -1,0 +1,90 @@
+<groupbox
+  onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window })"
+>
+  <hbox flex="1" style="min-height: 400px">
+    <!-- 左栏：供应商列表 -->
+    <vbox style="width: 240px; margin-right: 12px">
+      <label><html:h3>供应商</html:h3></label>
+      <html:div
+        id="zctr-provider-list"
+        style="
+          flex: 1;
+          border: 1px solid var(--fill-quaternary, #ccc);
+          border-radius: 6px;
+          padding: 4px;
+          overflow-y: auto;
+          min-height: 200px;
+        "
+      ></html:div>
+      <button
+        id="zctr-btn-add"
+        label="添加供应商"
+        style="margin-top: 8px"
+      />
+    </vbox>
+
+    <!-- 右栏：供应商表单 -->
+    <vbox flex="1">
+      <label><html:h3>供应商配置</html:h3></label>
+      <label>名称</label>
+      <html:input
+        id="zctr-input-name"
+        placeholder="如: OpenAI / DeepSeek / 本地 Ollama"
+        style="width: 100%"
+      />
+      <label style="margin-top: 8px">API Base URL</label>
+      <html:input
+        id="zctr-input-baseurl"
+        placeholder="https://api.openai.com/v1"
+        style="width: 100%"
+      />
+      <label style="margin-top: 8px">API Key</label>
+      <html:input
+        id="zctr-input-apikey"
+        type="password"
+        placeholder="sk-..."
+        style="width: 100%"
+      />
+      <label style="margin-top: 8px">模型</label>
+      <html:input
+        id="zctr-input-model"
+        placeholder="gpt-4o-mini"
+        style="width: 100%"
+      />
+
+      <hbox style="margin-top: 16px">
+        <button id="zctr-btn-save" label="保存" />
+        <button id="zctr-btn-active" label="设为激活" style="margin-left: 8px" />
+        <button id="zctr-btn-delete" label="删除" style="margin-left: 8px" />
+      </hbox>
+
+      <separator style="margin-top: 24px" />
+
+      <label><html:h3>翻译设置</html:h3></label>
+      <hbox align="center">
+        <label flex="1">目标语言</label>
+        <html:input
+          id="zctr-input-targetlang"
+          placeholder="zh"
+          style="width: 120px"
+        />
+        <button
+          id="zctr-btn-save-targetlang"
+          label="保存"
+          style="margin-left: 8px"
+        />
+      </hbox>
+      <label style="color: #888; margin-top: 4px">
+        目标语言使用语言代码，如 zh（中文）、en（英文）、ja（日文）等
+      </label>
+      <hbox align="center" style="margin-top: 10px">
+        <html:input
+          id="zctr-input-streaming"
+          type="checkbox"
+          style="margin: 0 6px 0 0"
+        />
+        <label flex="1">使用流式输出（逐字显示翻译结果）</label>
+      </hbox>
+    </vbox>
+  </hbox>
+</groupbox>
