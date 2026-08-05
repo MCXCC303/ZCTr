@@ -1,6 +1,7 @@
 # dot files
 .DS_Store
 .claude
+.idea/
 CLAUDE.md
 AGENTS.md
 

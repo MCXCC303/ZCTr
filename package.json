@@ -1,33 +1,33 @@
 {
-  "name": "zctr",
-  "version": "0.1.0",
-  "description": "ZCTr - Zotero click-on-translate: translate selected text in PDF reader with LLM (OpenAI-compatible APIs)",
-  "config": {
-    "addonName": "ZCTr",
-    "addonID": "zctr@zotero.plugin",
-    "addonRef": "zctr",
-    "addonInstance": "ZCTr",
-    "prefsPrefix": "extensions.zotero.zctr"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/MCXCC303/zotero-click-on-translate.git"
-  },
-  "homepage": "https://github.com/MCXCC303/zotero-click-on-translate#readme",
-  "author": "MCXCC303",
-  "license": "AGPL-3.0-or-later",
-  "scripts": {
-    "start": "zotero-plugin serve",
-    "build": "zotero-plugin build && cp .scaffold/build/zc-tr.xpi build/",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "zotero-plugin-toolkit": "5.1.0-beta.13"
-  },
-  "devDependencies": {
-    "@types/node": "^24.0.0",
-    "typescript": "^5.9.3",
-    "zotero-plugin-scaffold": "^0.8.5",
-    "zotero-types": "^4.1.0-beta.4"
-  }
+	"name": "zctr",
+	"version": "0.1.0",
+	"description": "ZCTr - Zotero click-on-translate: translate selected text in PDF reader with LLM (OpenAI-compatible APIs)",
+	"config": {
+		"addonName": "ZCTr",
+		"addonID": "zctr@zotero.plugin",
+		"addonRef": "zctr",
+		"addonInstance": "ZCTr",
+		"prefsPrefix": "extensions.zotero.zctr"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MCXCC303/zotero-click-on-translate.git"
+	},
+	"homepage": "https://github.com/MCXCC303/zotero-click-on-translate#readme",
+	"author": "MCXCC303",
+	"license": "AGPL-3.0-or-later",
+	"scripts": {
+		"start": "zotero-plugin serve",
+		"build": "zotero-plugin build && cp .scaffold/build/zc-tr.xpi build/",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"zotero-plugin-toolkit": "5.1.0-beta.13"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0",
+		"typescript": "^5.9.3",
+		"zotero-plugin-scaffold": "^0.8.5",
+		"zotero-types": "^4.1.0-beta.4"
+	}
 }
