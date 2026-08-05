@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so `zotero-plugin release` can generate the changelog
+          # from commits between the previous tag and this one
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Release
+        # zotero-plugin-scaffold detects the CI environment and:
+        #  1. builds the XPI (bumpp.execute)
+        #  2. creates a GitHub release with tag v<version> and uploads the XPI
+        #  3. updates the "release" tag with update.json (for Zotero auto-update)
+        run: npm run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

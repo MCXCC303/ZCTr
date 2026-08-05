@@ -11,15 +11,16 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/MCXCC303/zotero-click-on-translate.git"
+		"url": "git+https://github.com/MCXCC303/ZCTr.git"
 	},
-	"homepage": "https://github.com/MCXCC303/zotero-click-on-translate#readme",
+	"homepage": "https://github.com/MCXCC303/ZCTr#readme",
 	"author": "MCXCC303",
 	"license": "AGPL-3.0-or-later",
 	"scripts": {
 		"start": "zotero-plugin serve",
-		"build": "zotero-plugin build && cp .scaffold/build/zc-tr.xpi build/",
-		"typecheck": "tsc --noEmit"
+		"build": "zotero-plugin build && mkdir -p build && cp .scaffold/build/zc-tr.xpi build/",
+		"typecheck": "tsc --noEmit",
+		"release": "zotero-plugin release"
 	},
 	"dependencies": {
 		"zotero-plugin-toolkit": "5.1.0-beta.13"

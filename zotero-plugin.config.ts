@@ -33,4 +33,15 @@ export default defineConfig({
 			},
 		],
 	},
+	release: {
+		bumpp: {
+			// Run the build before releasing (used in CI)
+			execute: "npm run build",
+		},
+		github: {
+			// Only release to GitHub in CI; locally `zotero-plugin release`
+			// just bumps the version, commits and pushes the tag
+			enable: "ci",
+		},
+	},
 });
