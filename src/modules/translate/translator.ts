@@ -62,8 +62,16 @@ function keyName(providerId: string): string {
   return `${KEY_PREFIX}${providerId}`;
 }
 
-/** Store (or remove, when empty) a provider's API key. */
-export function setProviderApiKey(providerId: string, apiKey: string): void {
+/**
+ * Store (or remove, when empty) a provider's API key.
+ *
+ * Firefox 137+ replaced `nsILoginManager.addLogin` with the async
+ * `addLoginAsync`; Zotero 9 runs on such a build.
+ */
+export async function setProviderApiKey(
+  providerId: string,
+  apiKey: string,
+): Promise<void> {
   try {
     const existing = Services.logins.findLogins(KEY_HOST, "", "");
     for (const login of existing) {
@@ -76,8 +84,7 @@ export function setProviderApiKey(providerId: string, apiKey: string): void {
         Ci.nsILoginInfo,
       );
       login.init(KEY_HOST, "", "", keyName(providerId), apiKey, "", "");
-      // Gecko typings lag behind the runtime API (addLogins vs addLogin)
-      (Services.logins as any).addLogin(login);
+      await (Services.logins as any).addLoginAsync(login);
     }
   } catch (error) {
     ztoolkit.log("[ZCTr] Failed to store API key:", error);
@@ -129,7 +136,7 @@ export function getProviders(): ProviderConfig[] {
         // One-time migration of plaintext apiKey (pre type-field versions)
         // into the login manager, then drop it from the stored JSON.
         if (provider.apiKey) {
-          setProviderApiKey(provider.id, provider.apiKey);
+          setProviderApiKey(provider.id, provider.apiKey).catch(() => {});
           delete provider.apiKey;
           migrated = true;
         }

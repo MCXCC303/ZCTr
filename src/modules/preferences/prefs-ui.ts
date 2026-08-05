@@ -254,8 +254,8 @@ function validateForm(): ProviderConfig | null {
 }
 
 /** Store the API key in the login manager, then persist the provider. */
-function persistProvider(provider: ProviderConfig): void {
-  setProviderApiKey(provider.id, provider.apiKey || "");
+async function persistProvider(provider: ProviderConfig): Promise<void> {
+  await setProviderApiKey(provider.id, provider.apiKey || "");
   const providers = getProviders();
   const index = providers.findIndex((p) => p.id === provider.id);
   if (index >= 0) {
@@ -266,7 +266,7 @@ function persistProvider(provider: ProviderConfig): void {
   saveProviders(providers);
 }
 
-function saveCurrent(): void {
+async function saveCurrent(): Promise<void> {
   if (!doc) {
     return;
   }
@@ -274,7 +274,7 @@ function saveCurrent(): void {
   if (!provider) {
     return;
   }
-  persistProvider(provider);
+  await persistProvider(provider);
 
   // Auto-activate the first provider if none is active yet
   const providers = getProviders();
@@ -286,7 +286,7 @@ function saveCurrent(): void {
   renderProviderList();
 }
 
-function setActiveCurrent(): void {
+async function setActiveCurrent(): Promise<void> {
   if (!doc) {
     return;
   }
@@ -294,7 +294,7 @@ function setActiveCurrent(): void {
   if (!provider) {
     return;
   }
-  persistProvider(provider);
+  await persistProvider(provider);
   editingId = provider.id;
   setActiveProvider(editingId);
   renderProviderList();
