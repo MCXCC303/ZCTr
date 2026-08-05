@@ -90,4 +90,4 @@ src/
 
 ## 许可证
 
-AGPL-3.0-or-later
+AGPL-3.0-or-later · Copyright (C) 2026 MCXCC303
