@@ -4,7 +4,7 @@
   <hbox flex="1" style="min-height: 400px">
     <!-- 左栏：供应商列表 -->
     <vbox style="width: 260px; margin-right: 12px">
-      <label><h3>供应商</h3></label>
+      <label><html:h3>供应商</html:h3></label>
       <html:div
         id="zctr-provider-list"
         style="
@@ -15,7 +15,7 @@
           overflow-y: auto;
           min-height: 200px;
         "
-      ></div>
+      ></html:div>
       <button
         id="zctr-btn-add"
         label="添加供应商"
@@ -25,7 +25,7 @@
 
     <!-- 右栏：供应商表单 -->
     <vbox flex="1">
-      <label><h3>供应商配置</h3></label>
+      <label><html:h3>供应商配置</html:h3></label>
 
       <label>供应商类型</label>
       <html:select id="zctr-input-type" style="width: 100%">
@@ -111,7 +111,7 @@
 
       <separator style="margin-top: 24px" />
 
-      <label><h3>翻译设置</h3></label>
+      <label><html:h3>翻译设置</html:h3></label>
       <hbox align="center">
         <label flex="1">目标语言</label>
         <html:input
