@@ -1,6 +1,18 @@
-# ZCTr — Zotero 点按翻译插件
+<h1 align="center">ZCTr</h1>
+<p align="center">
+  <b>Zotero 点按翻译插件 - 选中即译 · LLM 驱动</b>
+</p>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MCXCC303/images/main/AI%20TransMate/screenshot_2026-08-05-215717.png" width="720">
+</p>
+<p align="center">
+  <img src="https://github.com/MCXCC303/ZCTr/actions/workflows/ci.yml/badge.svg">
+  <img src="https://img.shields.io/github/v/release/MCXCC303/ZCTr">
+  <img src="https://img.shields.io/badge/Zotero-7.0+-%23CC2936">
+  <img src="https://img.shields.io/badge/LICENSE-AGPL--3.0-black">
+</p>
 
-在 Zotero PDF 阅读器中选中文本后，通过右键菜单在文本旁弹出悬浮窗，调用大语言模型翻译选中内容。
+---
 
 ## 功能
 
