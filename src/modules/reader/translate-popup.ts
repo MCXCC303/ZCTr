@@ -4,17 +4,18 @@
  *
  * Mechanism (Zotero reader internals):
  * - The reader dispatches a `customEvent` on the reader iframe window with
- *   detail { type: "createViewContextMenu", reader, append, params } whenever
- *   the user right-clicks the PDF view. Zotero.Reader.registerEventListener
- *   forwards this to plugin code as event = { reader, params, append }.
+ *   detail { type: "createViewContextMenu" | "createAnnotationContextMenu",
+ *   reader, append, params } whenever the user right-clicks the PDF view or
+ *   an annotation. Zotero.Reader.registerEventListener forwards this to
+ *   plugin code as event = { reader, params, append }.
  * - `params.x/y` are viewport coordinates of the reader iframe.
  * - The current text selection lives in the pdf.js viewer iframe:
  *   reader._internalReader._lastView._iframeWindow.getSelection().
  *
- * The popup is created inside the reader iframe document (so params.x/y map
- * directly) and closes on any pointerdown outside of it. Because pointer
- * events inside the pdf.js viewer iframe never reach the reader document,
- * the outside-click listener is attached to both documents.
+ * The popup shows the translation only (no source text), is a singleton
+ * (at most one exists), and is closed only via its close button - there is
+ * no outside-click or Escape dismissal. It is created inside the reader
+ * iframe document so params.x/y map directly.
  */
 
 import {
@@ -59,12 +60,11 @@ let readerIdCounter = 0;
 /** Cap on stale registry entries (menus opened but never clicked). */
 const REGISTRY_LIMIT = 50;
 
-/** Currently open popup state, per reader iframe document. */
-type PopupState = {
-	el: HTMLElement;
-	cleanup: () => void;
-};
-const popupStates = new Map<Document, PopupState>();
+/**
+ * The single open popup (global singleton - at most one ZCTr popup exists).
+ * Null when closed.
+ */
+let currentPopup: HTMLElement | null = null;
 
 export function registerReaderTranslate(): void {
 	if (!Zotero.Reader?.registerEventListener) {
@@ -261,7 +261,8 @@ function openTranslatePopup(
 	x: number | undefined,
 	y: number | undefined,
 ): void {
-	closePopup(entry.doc);
+	// Singleton: replace any existing popup
+	closePopup();
 	const {doc} = entry;
 	const popup = doc.createElement("div");
 	popup.id = POPUP_ID;
@@ -365,21 +366,7 @@ function openTranslatePopup(
 	});
 	popup.append(resizeHandle);
 
-	// Source text (collapsible by scroll, no special UI)
-	const source = doc.createElement("div");
-	source.style.cssText = [
-		"max-height: 120px",
-		"overflow-y: auto",
-		"padding: 8px 10px",
-		"border-bottom: 1px solid var(--fill-quaternary, #eeeeee)",
-		"white-space: pre-wrap",
-		"word-break: break-word",
-		"color: var(--fill-secondary, #666666)",
-		"flex-shrink: 0",
-	].join("; ");
-	source.textContent = text;
-
-	// Translation result area
+	// Translation result area (the popup shows the translation only)
 	const result = doc.createElement("div");
 	result.style.cssText = [
 		"flex: 1",
@@ -390,7 +377,7 @@ function openTranslatePopup(
 		"word-break: break-word",
 	].join("; ");
 
-	popup.append(header, source, result);
+	popup.append(header, result);
 	const mount = (doc.body || doc.documentElement) as HTMLElement;
 	mount.append(popup);
 
@@ -428,36 +415,10 @@ function openTranslatePopup(
 		}
 	}
 
-	// Close on any pointerdown outside the popup. Pointer events inside the
-	// pdf.js viewer iframe never bubble up to the reader document, so listen on
-	// both the reader document and the viewer iframe window.
-	const onPointerDown = (event: Event): void => {
-		const target = event.target as Node | null;
-		if (target && !popup.contains(target)) {
-			closePopup(doc);
-		}
-	};
-	// Escape inside the pdf.js viewer iframe never bubbles to the reader
-	// document, so listen on both.
-	const onKeyDown = (event: KeyboardEvent): void => {
-		if (event.key === "Escape") {
-			closePopup(doc);
-		}
-	};
-	doc.addEventListener("pointerdown", onPointerDown, true);
-	entry.iframeWin.addEventListener("pointerdown", onPointerDown, true);
-	doc.addEventListener("keydown", onKeyDown, true);
-	entry.iframeWin.addEventListener("keydown", onKeyDown, true);
-
-	popupStates.set(doc, {
-		el: popup,
-		cleanup: () => {
-			doc.removeEventListener("pointerdown", onPointerDown, true);
-			entry.iframeWin.removeEventListener("pointerdown", onPointerDown, true);
-			doc.removeEventListener("keydown", onKeyDown, true);
-			entry.iframeWin.removeEventListener("keydown", onKeyDown, true);
-		},
-	});
+	// The popup is closed only via its close button (no outside-click or
+	// Escape handling) and is a singleton: opening a new translation
+	// replaces the current popup.
+	currentPopup = popup;
 
 	startTranslation(entry, result, cacheBadge, text);
 }
@@ -478,8 +439,7 @@ async function startTranslation(
 	const streaming = getPref(PREFS.STREAMING) !== false;
 	Zotero.debug(`[ZCTr] startTranslation: streaming=${streaming} targetLang=${targetLang}`);
 
-	const isVisible = (): boolean =>
-		!!popupStates.get(entry.doc)?.el?.contains(result);
+	const isVisible = (): boolean => !!currentPopup?.contains(result);
 
 	// Local cache hit: show the previous translation instantly
 	const cached = await translationCache.get(text, targetLang, provider.id);
@@ -652,20 +612,10 @@ function getSelectionViewportRect(
 	return null;
 }
 
-function closePopup(doc?: Document): void {
-	if (doc) {
-		const state = popupStates.get(doc);
-		if (!state) {
-			return;
-		}
-		state.cleanup();
-		state.el.remove();
-		popupStates.delete(doc);
+function closePopup(): void {
+	if (!currentPopup) {
 		return;
 	}
-	for (const state of popupStates.values()) {
-		state.cleanup();
-		state.el.remove();
-	}
-	popupStates.clear();
+	currentPopup.remove();
+	currentPopup = null;
 }

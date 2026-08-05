@@ -1,7 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
-    <rect x="4" y="4" width="88" height="88" rx="18" fill="#2f7cde"/>
-    <path d="M24 30h30v8H24zM24 44h48v8H24zM24 58h30v8H24z" fill="#fff"/>
-    <path d="M62 52l12 6-12 6z" fill="#fff" opacity="0"/>
-    <text x="48" y="68" font-family="sans-serif" font-size="34" font-weight="bold" fill="#fff" text-anchor="middle">译
-    </text>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="48"
+   height="48"
+   viewBox="0 0 12.7 12.7"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="layer1">
+    <rect
+       style="font-variation-settings:normal;opacity:1;vector-effect:none;fill:#37bffb;fill-opacity:1;fill-rule:evenodd;stroke:#022e4b;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:3.9;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;-inkscape-stroke:none;stop-color:#000000;stop-opacity:1"
+       id="rect1"
+       width="11.694038"
+       height="11.694038"
+       x="0.50082237"
+       y="0.50082237"
+       ry="2.7286184" />
+    <g
+       id="g2"
+       transform="matrix(0.85027255,0,0,0.85027255,0.85720243,0.94861084)"
+       style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.999904;stroke-dasharray:none;stroke-opacity:1">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:9.498px;line-height:normal;font-family:Melete;-inkscape-font-specification:'Melete, Normal';font-variant-ligatures:none;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-decoration-color:#000000;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.999904;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+         x="-0.65565985"
+         y="9.6742945"
+         id="text1"><tspan
+           id="tspan1"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:9.498px;font-family:Melete;-inkscape-font-specification:'Melete, Normal';font-variant-ligatures:none;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.999904;stroke-dasharray:none;stroke-opacity:1"
+           x="-0.65565985"
+           y="9.6742945">Z</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:semi-expanded;font-size:3.45358px;line-height:normal;font-family:Melete;-inkscape-font-specification:'Melete, Bold Semi-Expanded';font-variant-ligatures:none;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-decoration-color:#000000;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.999904;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+         x="7.3627262"
+         y="8.2375345"
+         id="text2"><tspan
+           id="tspan2"
+           style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:semi-expanded;font-size:3.45358px;font-family:Melete;-inkscape-font-specification:'Melete, Bold Semi-Expanded';font-variant-ligatures:none;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.999904;stroke-dasharray:none;stroke-opacity:1"
+           x="7.3627262"
+           y="8.2375345">T</tspan></text>
+    </g>
+  </g>
 </svg>
