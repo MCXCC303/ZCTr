@@ -52,6 +52,8 @@ type ReaderEntry = {
 	view: ViewLike;
 	doc: Document;
 	iframeWin: Window;
+	/** Attachment item id - scopes the translation cache to this article. */
+	itemID?: number;
 };
 
 /** Registered readers, keyed by a numeric id captured in the menu closure. */
@@ -204,7 +206,7 @@ function handleAnnotationContextMenu(event: ContextMenuEvent): void {
 	}
 
 	const id = ++readerIdCounter;
-	readerRegistry.set(id, {view, doc, iframeWin});
+	readerRegistry.set(id, {view, doc, iframeWin, itemID: reader?.itemID});
 	if (readerRegistry.size > REGISTRY_LIMIT) {
 		readerRegistry.delete(readerRegistry.keys().next().value as number);
 	}
@@ -237,7 +239,7 @@ function handleViewContextMenu(event: ContextMenuEvent): void {
 	}
 
 	const id = ++readerIdCounter;
-	readerRegistry.set(id, {view, doc, iframeWin});
+	readerRegistry.set(id, {view, doc, iframeWin, itemID: reader?.itemID});
 	if (readerRegistry.size > REGISTRY_LIMIT) {
 		readerRegistry.delete(readerRegistry.keys().next().value as number);
 	}
@@ -442,7 +444,12 @@ async function startTranslation(
 	const isVisible = (): boolean => !!currentPopup?.contains(result);
 
 	// Local cache hit: show the previous translation instantly
-	const cached = await translationCache.get(text, targetLang, provider.id);
+	const cached = await translationCache.get(
+		entry.itemID,
+		text,
+		targetLang,
+		provider.id,
+	);
 	if (cached !== null) {
 		Zotero.debug(`[ZCTr] cache hit: ${cached.length} chars`);
 		cacheBadge.hidden = false;
@@ -478,7 +485,13 @@ async function startTranslation(
 
 	const cachePut = (translation: string): void => {
 		if (translation) {
-			void translationCache.put(text, targetLang, provider.id, translation);
+			void translationCache.put(
+				entry.itemID,
+				text,
+				targetLang,
+				provider.id,
+				translation,
+			);
 		}
 	};
 
