@@ -32,7 +32,10 @@ jobs:
         # The release is created with tag v<package.json version>, so make
         # the version match the tag that triggered this workflow (e.g. a
         # v0.1.1 tag publishes version 0.1.1). No git tag is created here.
-        run: npm version ${GITHUB_REF_NAME#v} --no-git-tag-version
+        # --allow-same-version: the standard local `npm run release` flow
+        # already bumped package.json to the tagged version, in which case
+        # npm version would otherwise fail with "Version not changed".
+        run: npm version ${GITHUB_REF_NAME#v} --no-git-tag-version --allow-same-version
 
       - name: Check if release already exists
         id: check-release
