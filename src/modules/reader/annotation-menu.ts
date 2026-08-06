@@ -8,49 +8,15 @@
 
 import {
 	consumeReaderEntry,
+	getAnnotationText,
+	getReaderContext,
 	MAX_SOURCE_LENGTH,
 	registerReaderEntry,
 	registerReaderListener,
 	unregisterReaderListener,
 	type ContextMenuEvent,
-	type ReaderLike,
 } from "./common";
 import {openTranslatePopup} from "./translate-popup";
-
-/**
- * Collect the text of the annotations a context menu was opened on.
- * Each annotation contributes its highlighted text plus its comment.
- */
-function getAnnotationText(
-	reader: ReaderLike | undefined,
-	ids: string[] | undefined,
-): string {
-	if (!ids?.length || !reader?.itemID) {
-		return "";
-	}
-	const attachment = Zotero.Items.get(reader.itemID);
-	if (!attachment) {
-		return "";
-	}
-	const parts: string[] = [];
-	for (const key of ids) {
-		const annotation = Zotero.Items.getByLibraryAndKey(
-			attachment.libraryID,
-			key,
-		);
-		if (!annotation) {
-			continue;
-		}
-		const text = (annotation.annotationText || "").trim();
-		const comment = (annotation.annotationComment || "").trim();
-		if (text && comment) {
-			parts.push(`${text}\n\n(${comment})`);
-		} else if (text || comment) {
-			parts.push(text || comment);
-		}
-	}
-	return parts.join("\n\n---\n\n");
-}
 
 function handleAnnotationContextMenu(event: ContextMenuEvent): void {
 	const reader = event.reader;
@@ -58,15 +24,12 @@ function handleAnnotationContextMenu(event: ContextMenuEvent): void {
 	if (!text) {
 		return;
 	}
-	const internal = reader?._internalReader;
-	const view = internal?._lastView || internal?._primaryView;
-	const doc = reader?._iframeWindow?.document;
-	const iframeWin = view?._iframeWindow;
-	if (!doc || !iframeWin) {
+	const context = getReaderContext(reader);
+	if (!context) {
 		return;
 	}
 
-	const id = registerReaderEntry({view, doc, iframeWin, itemID: reader?.itemID});
+	const id = registerReaderEntry({...context, itemID: reader?.itemID});
 
 	const {x, y} = event.params || {};
 	event.append?.({

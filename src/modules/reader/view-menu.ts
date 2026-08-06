@@ -7,69 +7,30 @@
 
 import {
 	consumeReaderEntry,
+	getReaderContext,
+	getSelectedText,
 	MAX_SOURCE_LENGTH,
 	registerReaderEntry,
 	registerReaderListener,
 	unregisterReaderListener,
 	type ContextMenuEvent,
-	type ViewLike,
 } from "./common";
 import {openTranslatePopup} from "./translate-popup";
 
-/**
- * Collect the current text selection from the focused reader view.
- *
- * Prefers the native browser selection on the pdf.js text layer. The reader
- * re-renders on right-click (`_handleContextMenu` calls `_render()`), which
- * rebuilds the text layer and clears the native selection, so fall back to
- * Zotero's logical selection ranges (`_selectionRanges`), which survive the
- * re-render and carry `text` per range.
- */
-function getSelectedText(view: ViewLike | undefined): string {
-	const win = view?._iframeWindow;
-	if (win) {
-		try {
-			const native = (win.getSelection()?.toString() || "").trim();
-			if (native) {
-				return native;
-			}
-		} catch (error) {
-			ztoolkit.log("[ZCTr] Failed to read selection:", error);
-		}
-	}
-	try {
-		const ranges = (view as any)?._selectionRanges;
-		if (Array.isArray(ranges) && ranges.length) {
-			const text = ranges
-				.filter((r: any) => r && !r.collapsed && typeof r.text === "string")
-				.map((r: any) => r.text)
-				.join("\n")
-				.trim();
-			if (text) {
-				return text;
-			}
-		}
-	} catch (error) {
-		ztoolkit.log("[ZCTr] Failed to read logical selection:", error);
-	}
-	return "";
-}
-
 function handleViewContextMenu(event: ContextMenuEvent): void {
-	const reader = event.reader;
-	const internal = reader?._internalReader;
-	const view = internal?._lastView || internal?._primaryView;
-	const text = getSelectedText(view);
+	const context = getReaderContext(event.reader);
+	if (!context) {
+		return;
+	}
+	const text = getSelectedText(context.view);
 	if (!text) {
 		return;
 	}
-	const doc = reader?._iframeWindow?.document;
-	const iframeWin = view?._iframeWindow;
-	if (!doc || !iframeWin) {
-		return;
-	}
 
-	const id = registerReaderEntry({view, doc, iframeWin, itemID: reader?.itemID});
+	const id = registerReaderEntry({
+		...context,
+		itemID: event.reader?.itemID,
+	});
 
 	const {x, y} = event.params || {};
 	event.append?.({

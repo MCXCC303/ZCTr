@@ -1,6 +1,12 @@
 import {createZToolkit} from "./utils/ztoolkit";
 import {registerViewMenu, unregisterViewMenu,} from "./modules/reader/view-menu";
 import {registerAnnotationMenu, unregisterAnnotationMenu,} from "./modules/reader/annotation-menu";
+import {
+	registerHotkey,
+	registerWindowHotkey,
+	unregisterHotkey,
+	unregisterWindowHotkey,
+} from "./modules/reader/hotkey";
 import {closePopup} from "./modules/reader/translate-popup";
 import {registerPrefsScripts} from "./modules/preferences/prefs-ui";
 
@@ -25,6 +31,7 @@ async function onStartup() {
 	// Register reader context menu entries (global, not per window)
 	registerViewMenu();
 	registerAnnotationMenu();
+	registerHotkey();
 
 	// Initialize per-window toolkits
 	await Promise.all(
@@ -34,16 +41,19 @@ async function onStartup() {
 	addon.data.initialized = true;
 }
 
-async function onMainWindowLoad(_win: _ZoteroTypes.MainWindow): Promise<void> {
+async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 	addon.data.ztoolkit = createZToolkit();
+	registerWindowHotkey(win);
 }
 
-async function onMainWindowUnload(_win: _ZoteroTypes.MainWindow): Promise<void> {
+async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
+	unregisterWindowHotkey(win);
 }
 
 async function onShutdown(): Promise<void> {
 	unregisterViewMenu();
 	unregisterAnnotationMenu();
+	unregisterHotkey();
 	closePopup();
 	addon.data.alive = false;
 	addon.data.initialized = false;
@@ -52,6 +62,7 @@ async function onShutdown(): Promise<void> {
 async function onAppShutdown(): Promise<void> {
 	unregisterViewMenu();
 	unregisterAnnotationMenu();
+	unregisterHotkey();
 	closePopup();
 	addon.data.alive = false;
 }

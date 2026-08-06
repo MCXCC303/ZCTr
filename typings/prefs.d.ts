@@ -10,6 +10,7 @@ declare namespace _ZoteroTypes {
       "providers": string;
       "activeProviderId": string;
       "targetLang": string;
+      "shortcut": string;
       "streaming": boolean;
       "cachePersist": boolean;
       "cacheLimit": number;

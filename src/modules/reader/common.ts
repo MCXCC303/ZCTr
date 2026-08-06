@@ -61,6 +61,62 @@ export function consumeReaderEntry(id: number): ReaderEntry | null {
 /** Longest source text sent to the provider. */
 export const MAX_SOURCE_LENGTH = 8000;
 
+/**
+ * Extract the reader UI context (view, document, iframe window) from a
+ * context menu event's reader reference. Null when the reader is not ready.
+ */
+export function getReaderContext(
+	reader: ReaderLike | undefined,
+): {view: ViewLike; doc: Document; iframeWin: Window} | null {
+	const internal = reader?._internalReader;
+	const view = internal?._lastView || internal?._primaryView;
+	const doc = reader?._iframeWindow?.document;
+	const iframeWin = view?._iframeWindow;
+	if (!doc || !iframeWin) {
+		return null;
+	}
+	return {view, doc, iframeWin};
+}
+
+/**
+ * Collect the current text selection from the focused reader view.
+ *
+ * Prefers the native browser selection on the pdf.js text layer. The reader
+ * re-renders on right-click (`_handleContextMenu` calls `_render()`), which
+ * rebuilds the text layer and clears the native selection, so fall back to
+ * Zotero's logical selection ranges (`_selectionRanges`), which survive the
+ * re-render and carry `text` per range.
+ */
+export function getSelectedText(view: ViewLike | undefined): string {
+	const win = view?._iframeWindow;
+	if (win) {
+		try {
+			const native = (win.getSelection()?.toString() || "").trim();
+			if (native) {
+				return native;
+			}
+		} catch (error) {
+			ztoolkit.log("[ZCTr] Failed to read selection:", error);
+		}
+	}
+	try {
+		const ranges = (view as any)?._selectionRanges;
+		if (Array.isArray(ranges) && ranges.length) {
+			const text = ranges
+				.filter((r: any) => r && !r.collapsed && typeof r.text === "string")
+				.map((r: any) => r.text)
+				.join("\n")
+				.trim();
+			if (text) {
+				return text;
+			}
+		}
+	} catch (error) {
+		ztoolkit.log("[ZCTr] Failed to read logical selection:", error);
+	}
+	return "";
+}
+
 /** The event names accepted by Zotero.Reader.registerEventListener. */
 type ReaderEventType = Parameters<
 	typeof Zotero.Reader.registerEventListener
@@ -99,4 +155,39 @@ export function unregisterReaderListener(
 	handler: (event: ContextMenuEvent) => void,
 ): void {
 	Zotero.Reader?.unregisterEventListener?.(type, handler as never);
+}
+
+/**
+ * Collect the text of annotations by their keys: each annotation contributes
+ * its highlighted text plus its comment.
+ */
+export function getAnnotationText(
+	reader: ReaderLike | undefined,
+	ids: string[] | undefined,
+): string {
+	if (!ids?.length || !reader?.itemID) {
+		return "";
+	}
+	const attachment = Zotero.Items.get(reader.itemID);
+	if (!attachment) {
+		return "";
+	}
+	const parts: string[] = [];
+	for (const key of ids) {
+		const annotation = Zotero.Items.getByLibraryAndKey(
+			attachment.libraryID,
+			key,
+		);
+		if (!annotation) {
+			continue;
+		}
+		const text = (annotation.annotationText || "").trim();
+		const comment = (annotation.annotationComment || "").trim();
+		if (text && comment) {
+			parts.push(`${text}\n\n(${comment})`);
+		} else if (text || comment) {
+			parts.push(text || comment);
+		}
+	}
+	return parts.join("\n\n---\n\n");
 }

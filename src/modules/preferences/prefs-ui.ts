@@ -26,6 +26,7 @@ import {
 	TARGET_LANGUAGES,
 } from "../translate/translator";
 import {getPref, type PrefKey, PREFS, setPref} from "../../utils/prefs";
+import {parseShortcut, serializeShortcut} from "../../utils/shortcut";
 import {providerForms} from "./forms";
 import {
 	clearFormEnv,
@@ -254,6 +255,38 @@ function bindGlobalSettings(): void {
 			: "zh";
 		langSelect.addEventListener("change", () => {
 			setPref(PREFS.TARGET_LANG, langSelect.value);
+		});
+	}
+
+	// Translate hotkey: click the input, then press the combo (Esc clears)
+	const shortcutInput = doc.getElementById(
+		"zctr-input-shortcut",
+	) as HTMLInputElement | null;
+	if (shortcutInput) {
+		shortcutInput.value = (getPref(PREFS.SHORTCUT) as string) || "";
+		shortcutInput.addEventListener("keydown", (event: KeyboardEvent) => {
+			event.preventDefault();
+			event.stopPropagation();
+			if (event.key === "Escape") {
+				shortcutInput.value = "";
+				setPref(PREFS.SHORTCUT, "");
+				return;
+			}
+			const combo = serializeShortcut(event);
+			if (combo) {
+				// A modifier key is required: a modifier-less combo would fire
+				// while typing in editable fields (comments, find box)
+				const shortcut = parseShortcut(combo);
+				if (
+					shortcut &&
+					!(shortcut.ctrl || shortcut.alt || shortcut.shift || shortcut.meta)
+				) {
+					win?.alert("快捷键需要包含至少一个修饰键（Ctrl / Alt / Shift / ⌘）。");
+					return;
+				}
+				shortcutInput.value = combo;
+				setPref(PREFS.SHORTCUT, combo);
+			}
 		});
 	}
 

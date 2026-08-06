@@ -10,6 +10,8 @@ export const PREFS = {
 	ACTIVE_PROVIDER_ID: "activeProviderId",
 	/** Target translation language code, e.g. "zh". */
 	TARGET_LANG: "targetLang",
+	/** Translate hotkey combo, e.g. "ctrl+alt+t"; empty = disabled. */
+	SHORTCUT: "shortcut",
 	/** Whether to use streaming (SSE) translation output. */
 	STREAMING: "streaming",
 	/** Whether the translation cache is persisted across sessions. */

@@ -5,6 +5,8 @@ pref("providers", "[]");
 pref("activeProviderId", "");
 // 目标语言（如 zh, en）
 pref("targetLang", "zh");
+// 翻译快捷键（修饰键+键的组合字符串，如 "ctrl+alt+t"；空字符串 = 禁用）
+pref("shortcut", "ctrl+alt+t");
 // 使用流式输出（SSE，逐字显示翻译结果）
 pref("streaming", true);
 // 持久化翻译缓存（写入 Zotero 数据目录，重启后保留）
