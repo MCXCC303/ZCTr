@@ -1,5 +1,7 @@
 import {createZToolkit} from "./utils/ztoolkit";
-import {registerReaderTranslate, unregisterReaderTranslate,} from "./modules/reader/translate-popup";
+import {registerViewMenu, unregisterViewMenu,} from "./modules/reader/view-menu";
+import {registerAnnotationMenu, unregisterAnnotationMenu,} from "./modules/reader/annotation-menu";
+import {closePopup} from "./modules/reader/translate-popup";
 import {registerPrefsScripts} from "./modules/preferences/prefs-ui";
 
 async function onStartup() {
@@ -21,7 +23,8 @@ async function onStartup() {
 	Zotero.debug("[ZCTr] PreferencePanes registered");
 
 	// Register reader context menu entries (global, not per window)
-	registerReaderTranslate();
+	registerViewMenu();
+	registerAnnotationMenu();
 
 	// Initialize per-window toolkits
 	await Promise.all(
@@ -39,13 +42,17 @@ async function onMainWindowUnload(_win: _ZoteroTypes.MainWindow): Promise<void> 
 }
 
 async function onShutdown(): Promise<void> {
-	unregisterReaderTranslate();
+	unregisterViewMenu();
+	unregisterAnnotationMenu();
+	closePopup();
 	addon.data.alive = false;
 	addon.data.initialized = false;
 }
 
 async function onAppShutdown(): Promise<void> {
-	unregisterReaderTranslate();
+	unregisterViewMenu();
+	unregisterAnnotationMenu();
+	closePopup();
 	addon.data.alive = false;
 }
 
