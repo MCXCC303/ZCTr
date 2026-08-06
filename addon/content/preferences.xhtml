@@ -64,14 +64,22 @@
                 </html:select>
             </vbox>
 
-            <!-- OpenAI 兼容 / Ollama：模型文本输入 -->
+            <!-- OpenAI 兼容：模型文本输入 -->
             <vbox id="zctr-field-model">
                 <label style="margin-top: 8px">模型</label>
                 <html:input
                         id="zctr-input-model"
-                        placeholder="如: llama3.2 / gpt-4o-mini"
+                        placeholder="如: gpt-4o-mini"
                         style="width: 100%"
                 />
+            </vbox>
+
+            <!-- Ollama：模型下拉（测试连接后启用） -->
+            <vbox id="zctr-field-model-ollama" hidden="true">
+                <label style="margin-top: 8px">模型</label>
+                <html:select id="zctr-input-model-ollama" disabled="disabled" style="width: 100%">
+                    <html:option value="">请先测试连接</html:option>
+                </html:select>
             </vbox>
 
             <!-- Ollama：端口 + 连通性检测 -->

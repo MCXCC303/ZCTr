@@ -1,36 +1,42 @@
 /**
- * ZCTr preferences UI.
+ * ZCTr preferences pane - orchestration.
  *
  * The pane skeleton lives in addon/content/preferences.xhtml and calls
  * Zotero.ZCTr.hooks.onPrefsEvent('load', { window }) on load; this module
- * renders the provider list and binds the form.
+ * renders the provider list, binds the buttons and orchestrates the shared
+ * form fields (name, type, API key).
  *
- * The provider form is type-driven: the first field selects the provider
- * type (openai / deepseek / ollama) and the remaining fields adapt to it:
- * - openai:   name + API Base URL + API Key + model (free text)
- * - deepseek: name + API Key + model (built-in base URL, model dropdown)
- * - ollama:   name + port + model (no API key, with connectivity test)
+ * Each provider type owns its type-specific fields via a ProviderForm
+ * (see forms/): openai (Base URL + model), deepseek (model dropdown),
+ * ollama (port + model dropdown + connectivity test).
  */
 
 import {
 	DEEPSEEK_MODELS,
-	OLLAMA_DEFAULT_PORT,
-	PROVIDER_TYPES,
-	PROVIDER_TYPE_LABELS,
-	TARGET_LANGUAGES,
 	generateProviderId,
 	getProviderApiKey,
 	getProviders,
+	PROVIDER_TYPE_LABELS,
+	PROVIDER_TYPES,
+	type ProviderConfig,
+	type ProviderType,
 	saveProviders,
 	setActiveProvider,
 	setProviderApiKey,
-	testOllamaConnection,
-	type ProviderConfig,
-	type ProviderType,
+	TARGET_LANGUAGES,
 } from "../translate/translator";
-import {PREFS, getPref, setPref, type PrefKey} from "../../utils/prefs";
-
-const XHTML_NS = "http://www.w3.org/1999/xhtml";
+import {getPref, type PrefKey, PREFS, setPref} from "../../utils/prefs";
+import {providerForms} from "./forms";
+import {
+	clearFormEnv,
+	hEl,
+	initFormEnv,
+	inputValue,
+	setInputValue,
+	setSelectValue,
+	setVisible,
+	XHTML_NS,
+} from "./provider-form";
 
 let win: Window | null = null;
 let doc: Document | null = null;
@@ -41,6 +47,7 @@ export async function registerPrefsScripts(window: Window): Promise<void> {
 	win = window;
 	doc = window.document;
 	editingId = null;
+	initFormEnv(window);
 
 	renderProviderList();
 	bindButtons();
@@ -52,6 +59,7 @@ export async function registerPrefsScripts(window: Window): Promise<void> {
 			if (win === window) {
 				win = null;
 				doc = null;
+				clearFormEnv();
 			}
 		},
 		{once: true},
@@ -60,51 +68,6 @@ export async function registerPrefsScripts(window: Window): Promise<void> {
 
 function getActiveId(): string {
 	return (getPref(PREFS.ACTIVE_PROVIDER_ID) as string) || "";
-}
-
-function inputValue(id: string): string {
-	return (doc?.getElementById(id) as HTMLInputElement | null)?.value ?? "";
-}
-
-function setInputValue(id: string, value: string): void {
-	const el = doc?.getElementById(id) as HTMLInputElement | null;
-	if (el) {
-		el.value = value;
-	}
-}
-
-function selectValue(id: string): string {
-	return (doc?.getElementById(id) as HTMLSelectElement | null)?.value ?? "";
-}
-
-function setSelectValue(id: string, value: string): void {
-	const el = doc?.getElementById(id) as HTMLSelectElement | null;
-	if (el) {
-		el.value = value;
-	}
-}
-
-function setVisible(id: string, visible: boolean): void {
-	const el = doc?.getElementById(id) as HTMLElement | null;
-	if (el) {
-		el.hidden = !visible;
-	}
-}
-
-/** Create an XHTML element inside the XUL preferences document. */
-function hEl<K extends keyof HTMLElementTagNameMap>(
-	tag: K,
-	text?: string,
-	style?: string,
-): HTMLElementTagNameMap[K] {
-	const el = doc!.createElementNS(XHTML_NS, tag) as HTMLElementTagNameMap[K];
-	if (text !== undefined) {
-		el.textContent = text;
-	}
-	if (style) {
-		el.style.cssText = style;
-	}
-	return el;
 }
 
 function renderProviderList(): void {
@@ -161,12 +124,15 @@ function renderProviderList(): void {
 	}
 }
 
-/** Show/hide form fields according to the provider type. */
+/** Show/hide the shared fields and delegate to the type's form. */
 function updateFormVisibility(type: ProviderType): void {
-	setVisible("zctr-field-baseurl", type === "openai");
-	setVisible("zctr-field-model-select", type === "deepseek");
-	setVisible("zctr-field-model", type !== "deepseek");
-	setVisible("zctr-field-port", type === "ollama");
+	for (const [formType, form] of Object.entries(providerForms) as [
+		ProviderType,
+		(typeof providerForms)[ProviderType],
+	][]) {
+		form.setVisible(formType === type);
+	}
+	// Shared fields
 	setVisible("zctr-field-apikey", type !== "ollama");
 }
 
@@ -174,25 +140,13 @@ function loadForm(provider: ProviderConfig | null): void {
 	const type: ProviderType = provider?.type || "openai";
 	setSelectValue("zctr-input-type", type);
 	setInputValue("zctr-input-name", provider?.name ?? "");
-	setInputValue("zctr-input-baseurl", provider?.apiBaseUrl ?? "");
-	// API keys live in the login manager, not in the provider JSON
-	setInputValue("zctr-input-apikey", provider ? getProviderApiKey(provider.id) : "");
+	setInputValue("zctr-input-baseurl", "");
 	setInputValue(
-		"zctr-input-model",
-		provider?.type === "deepseek" ? "" : (provider?.model ?? ""),
+		"zctr-input-apikey",
+		provider ? getProviderApiKey(provider.id) : "",
 	);
-	setSelectValue(
-		"zctr-input-model-select",
-		provider?.model || DEEPSEEK_MODELS[0],
-	);
-	setInputValue(
-		"zctr-input-port",
-		String(provider?.port || OLLAMA_DEFAULT_PORT),
-	);
-	const status = doc?.getElementById("zctr-ollama-status") as HTMLElement | null;
-	if (status) {
-		status.textContent = "";
-	}
+	setSelectValue("zctr-input-model-select", DEEPSEEK_MODELS[0]);
+	providerForms[type].load(provider);
 	updateFormVisibility(type);
 }
 
@@ -200,7 +154,8 @@ function validateForm(): ProviderConfig | null {
 	if (!doc) {
 		return null;
 	}
-	const type = selectValue("zctr-input-type") as ProviderType;
+	const type = (doc.getElementById("zctr-input-type") as HTMLSelectElement)
+		?.value as ProviderType;
 	const name = inputValue("zctr-input-name").trim();
 	if (!name) {
 		win?.alert("名称不能为空。");
@@ -211,47 +166,7 @@ function validateForm(): ProviderConfig | null {
 		type,
 		name,
 	};
-	switch (type) {
-		case "openai": {
-			const apiBaseUrl = inputValue("zctr-input-baseurl").trim().replace(/\/+$/, "");
-			const model = inputValue("zctr-input-model").trim();
-			if (!apiBaseUrl) {
-				win?.alert("API Base URL 不能为空。");
-				return null;
-			}
-			if (!model) {
-				win?.alert("模型不能为空。");
-				return null;
-			}
-			return {
-				...base,
-				apiBaseUrl,
-				apiKey: inputValue("zctr-input-apikey").trim(),
-				model,
-			};
-		}
-		case "deepseek": {
-			const model = selectValue("zctr-input-model-select");
-			return {
-				...base,
-				apiKey: inputValue("zctr-input-apikey").trim(),
-				model: model || DEEPSEEK_MODELS[0],
-			};
-		}
-		case "ollama": {
-			const model = inputValue("zctr-input-model").trim();
-			if (!model) {
-				win?.alert("模型不能为空。");
-				return null;
-			}
-			const port = parseInt(inputValue("zctr-input-port") || "", 10);
-			return {
-				...base,
-				port: Number.isFinite(port) ? port : OLLAMA_DEFAULT_PORT,
-				model,
-			};
-		}
-	}
+	return providerForms[type].validate(base);
 }
 
 /** Store the API key in the login manager, then persist the provider. */
@@ -314,33 +229,6 @@ function deleteCurrent(): void {
 	editingId = null;
 	loadForm(null);
 	renderProviderList();
-}
-
-async function testOllama(): Promise<void> {
-	const status = doc?.getElementById("zctr-ollama-status") as HTMLElement | null;
-	if (!status) {
-		return;
-	}
-	const port = parseInt(inputValue("zctr-input-port") || "", 10);
-	const portValue = Number.isFinite(port) ? port : OLLAMA_DEFAULT_PORT;
-	status.textContent = "检测中…";
-	status.style.color = "#888";
-	try {
-		const models = await testOllamaConnection(portValue);
-		if (models.length) {
-			const names = models
-				.slice(0, 5)
-				.map((m) => (m.parameterSize ? `${m.name} (${m.parameterSize})` : m.name))
-				.join(", ");
-			status.textContent = `✓ 连接成功，检测到 ${models.length} 个模型：${names}${models.length > 5 ? "…" : ""}`;
-		} else {
-			status.textContent = "✓ 连接成功（未检测到已安装的模型）";
-		}
-		status.style.color = "#2f7cde";
-	} catch (error) {
-		status.textContent = `✗ 连接失败：${(error as Error).message}`;
-		status.style.color = "#c0392b";
-	}
 }
 
 /** Bind the global translation settings (target language, streaming toggle). */
@@ -424,23 +312,24 @@ function bindButtons(): void {
 	doc.getElementById("zctr-btn-save")?.addEventListener("click", saveCurrent);
 	doc.getElementById("zctr-btn-active")?.addEventListener("click", setActiveCurrent);
 	doc.getElementById("zctr-btn-delete")?.addEventListener("click", deleteCurrent);
-	doc.getElementById("zctr-btn-test-ollama")?.addEventListener("click", testOllama);
+
+	// Delegate per-type field events (e.g. the Ollama connectivity test)
+	for (const form of Object.values(providerForms)) {
+		form.bindEvents();
+	}
 
 	// Type switch: adapt the form fields
 	const typeSelect = doc.getElementById("zctr-input-type") as HTMLSelectElement | null;
 	if (typeSelect) {
 		typeSelect.addEventListener("change", () => {
-			updateFormVisibility(typeSelect.value as ProviderType);
-			// Clear type-specific fields when switching
-			setInputValue("zctr-input-baseurl", "");
-			setInputValue("zctr-input-apikey", "");
-			setInputValue("zctr-input-model", "");
-			setSelectValue("zctr-input-model-select", DEEPSEEK_MODELS[0]);
-			setInputValue("zctr-input-port", String(OLLAMA_DEFAULT_PORT));
-			const status = doc?.getElementById("zctr-ollama-status") as HTMLElement | null;
-			if (status) {
-				status.textContent = "";
+			const type = typeSelect.value as ProviderType;
+			// Reset every type's fields, then show the selected type's form.
+			// The shared name and API key fields are kept so switching types
+			// does not lose what the user already typed.
+			for (const form of Object.values(providerForms)) {
+				form.reset();
 			}
+			updateFormVisibility(type);
 		});
 	}
 

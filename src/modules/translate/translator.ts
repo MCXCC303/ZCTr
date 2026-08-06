@@ -15,7 +15,7 @@
  * and merged back into the provider config when a request is made.
  */
 
-import {PREFS, getPref, setPref} from "../../utils/prefs";
+import {getPref, PREFS, setPref} from "../../utils/prefs";
 
 export type ProviderType = "openai" | "deepseek" | "ollama";
 

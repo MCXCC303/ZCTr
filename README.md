@@ -1,6 +1,6 @@
 <h1 align="center">ZCTr</h1>
 <p align="center">
-  <b>Zotero 点按翻译插件 - 选中即译 · LLM 驱动</b>
+  <b>Click-to-translate plugin for Zotero</b>
 </p>
 <p align="center">
   <img src="https://raw.githubusercontent.com/MCXCC303/images/main/AI%20TransMate/screenshot_2026-08-05-215717.png" width="720">
@@ -14,48 +14,31 @@
 
 ---
 
-## 功能
+This is an extremely simple & powerful translate plugin for Zotero.
 
-- **右键翻译**：PDF 阅读器中选中文本 → 右键 → 点击 "ZCTr 翻译"，悬浮窗自动出现在选中文本旁（优先下方，空间不足时在上方），尽量不遮挡文本
-- **注释翻译**：右键高亮/下划线等彩色注释 → "ZCTr 翻译"（翻译注释文本与批注内容）
-- **流式输出**：默认开启，译文逐字显示（SSE）；可在设置中关闭改为整段显示
-- **悬浮窗**：仅显示译文（不显示原文）；全局单实例（最多一个弹窗）；拖动标题栏移动、拖动右下角手柄调整大小；**仅通过 ✕ 按钮关闭**（不响应点击窗外/Esc）
-- **三种供应商类型**：
-    - **DeepSeek**：内置 API 端点，只需 API Key，模型下拉选择（`deepseek-v4-pro` / `deepseek-v4-flash`）
-    - **Ollama**：本地服务，只需端口（默认 11434）与模型名，支持**连通性检测**（自动列出已安装模型）
-    - **OpenAI 兼容**：任意兼容端点（API Base URL + API Key + 模型）
-- **API Key 安全**：密钥通过 Firefox 登录管理器（NSS 加密）存储，不落盘到插件偏好设置的明文 JSON 中
-- **目标语言可选**：13 种常用语言下拉选择（默认中文），保存即生效
-- **本地翻译缓存**：LRU 队列（默认 50 条，长度可调）；重复翻译同一段文本时直接显示缓存结果（标题栏出现 "⚡ 缓存" 标记），不发请求；可选**持久化**（写入 Zotero 数据目录 `zctr/cache.json`，重启后保留）
+## Installation
 
-## 安装
+1. Build the plugin: `npm install && npm run build`
+2. In Zotero: `Tools -> Add-ons -> ⚙️ -> Install Add-on From File…`, choose `build/zc-tr.xpi`
+3. Restart Zotero
 
-1. 构建插件：`npm install && npm run build`
-2. 在 Zotero 中打开 **工具 → 附加组件 → ⚙️ → 从文件安装附加组件**，选择 `build/zc-tr.xpi`
-3. 重启 Zotero
+## Usage
 
-## 配置
+1. Select paragraph/text in reader, right click and find `ZCTr` item, a pop-up window will appear to give specified translation.
+2. Highlight this paragraph, cache will be used if the text were translated again.
 
-打开 Zotero **设置（首选项）→ ZCTr**：
+## Configuration
 
-1. 点击 **添加供应商**，第一个条目选择**供应商类型**，后续表单按类型自适应：
-    - **DeepSeek**：名称 + API Key + 模型（下拉）
-    - **Ollama**：名称 + 端口 + 模型，可点击 **测试连接** 检测本地 Ollama 服务并列出已安装模型
-    - **OpenAI 兼容**：名称 + API Base URL + API Key + 模型
-2. 点击 **保存**，再点击 **设为激活**（可配置多个供应商，列表中点击切换）
-3. **目标语言**：下拉选择（中文 / 英文 / 日文 / 韩文 / 法文 / 德文 / 俄文 / 西班牙文 / 意大利文 / 葡萄牙文 / 阿拉伯文 / 泰文 / 越南文），选择即保存
-4. **使用流式输出**：勾选后翻译结果逐字显示（默认开启）
-5. **持久化翻译缓存**：勾选后缓存写入 Zotero 数据目录，重启后保留（默认关闭）
-6. **缓存队列长度**：缓存条目上限（默认 50）
+- Provider types now adapts:
+    - **DeepSeek**: name + API key + model
+    - **Ollama**: name + port + model, with a **Test Connection** button that detects the local Ollama service and lists installed models
+    - **OpenAI-compatible**: name + API Base URL + API key + model
+- Support stream output.
+- Cache is written to the Zotero data directory and survives restarts.
 
-左侧供应商列表显示 `名称 - 类型` 格式，方便区分。
+## Translation request format
 
-## 翻译请求格式
-
-请求通过 OpenAI 兼容的 `POST {API Base URL}/chat/completions` 接口发送（DeepSeek 内置 `https://api.deepseek.com`，Ollama 为
-`http://localhost:{port}/v1`），流式模式下启用 SSE（`stream: true`，逐块解析 `choices[0].delta.content`，以 `data: [DONE]`
-结束）：
-
+Requests go through the OpenAI-compatible `POST {API Base URL}/chat/completions` endpoint. In streaming mode SSE is used.
 ```json
 {
 	"model": "deepseek-v4-flash",
@@ -66,7 +49,7 @@
 		},
 		{
 			"role": "user",
-			"content": "<选中的文本>"
+			"content": "<SELECTED-TEXT>"
 		}
 	],
 	"temperature": 0.3,
@@ -74,20 +57,6 @@
 }
 ```
 
-### 模块结构
+## License
 
-```
-src/
-├── index.ts / addon.ts / hooks.ts     # 入口与生命周期（面板注册、阅读器事件注册）
-├── utils/
-│   ├── prefs.ts                       # 偏好设置封装（键名常量）
-│   └── ztoolkit.ts                    # zotero-plugin-toolkit 初始化
-└── modules/
-    ├── translate/translator.ts        # 供应商管理 + 翻译请求（流式/非流式）+ API Key 安全存储
-    ├── reader/translate-popup.ts      # 右键菜单注入 + 悬浮窗（定位/拖动/缩放/关闭）
-    └── preferences/prefs-ui.ts        # 设置面板（类型化表单 + Ollama 连通性检测）
-```
-
-## 许可证
-
-AGPL-3.0-or-later · Copyright (C) 2026 MCXCC303
+AGPL-3.0-or-later · Copyright © 2026 MCXCC303

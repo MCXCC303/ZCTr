@@ -18,13 +18,9 @@
  * iframe document so params.x/y map directly.
  */
 
-import {
-	getActiveProvider,
-	translateText,
-	translateTextStreaming,
-} from "../translate/translator";
+import {getActiveProvider, translateText, translateTextStreaming,} from "../translate/translator";
 import {translationCache} from "../translate/cache";
-import {PREFS, getPref} from "../../utils/prefs";
+import {getPref, PREFS} from "../../utils/prefs";
 
 const POPUP_ID = "zctr-translate-popup";
 const MAX_SOURCE_LENGTH = 8000;

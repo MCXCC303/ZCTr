@@ -1,8 +1,5 @@
 import {createZToolkit} from "./utils/ztoolkit";
-import {
-	registerReaderTranslate,
-	unregisterReaderTranslate,
-} from "./modules/reader/translate-popup";
+import {registerReaderTranslate, unregisterReaderTranslate,} from "./modules/reader/translate-popup";
 import {registerPrefsScripts} from "./modules/preferences/prefs-ui";
 
 async function onStartup() {
