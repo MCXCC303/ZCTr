@@ -128,6 +128,24 @@ function handleWindowKeyDown(event: KeyboardEvent): void {
 	}
 }
 
+/**
+ * Protect copying text from the ZCTr popup: the reader's focus manager
+ * listens for `copy` on its window (capture) and, when an annotation is
+ * selected, hijacks Ctrl+C to copy the annotation instead. Stopping the
+ * event at the main-window document (which is earlier in the capture path)
+ * lets the normal copy of the selected translation proceed.
+ */
+function handleWindowCopy(event: ClipboardEvent): void {
+	const target = event.target as Element | null;
+	if (
+		target &&
+		typeof target.closest === "function" &&
+		target.closest("#zctr-translate-popup")
+	) {
+		event.stopPropagation();
+	}
+}
+
 /** Attach the hotkey listener to a main window (idempotent). */
 export function registerWindowHotkey(win: Window): void {
 	if (hotkeyWindows.has(win)) {
@@ -135,6 +153,7 @@ export function registerWindowHotkey(win: Window): void {
 	}
 	hotkeyWindows.add(win);
 	win.document.addEventListener("keydown", handleWindowKeyDown, true);
+	win.document.addEventListener("copy", handleWindowCopy, true);
 }
 
 /** Detach the hotkey listener from a main window (idempotent). */
@@ -144,6 +163,7 @@ export function unregisterWindowHotkey(win: Window): void {
 	}
 	hotkeyWindows.delete(win);
 	win.document.removeEventListener("keydown", handleWindowKeyDown, true);
+	win.document.removeEventListener("copy", handleWindowCopy, true);
 }
 
 /** Attach the hotkey listener to all currently open main windows. */

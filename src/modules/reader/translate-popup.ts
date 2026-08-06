@@ -54,6 +54,10 @@ export function openTranslatePopup(
 		"font-size: 13px",
 		"line-height: 1.6",
 		"overflow: hidden",
+		// The reader disables text selection in parts of its UI; the
+		// translation result must stay selectable/copyable
+		"user-select: text",
+		"-webkit-user-select: text",
 	].join("; ");
 
 	// Header: title + close button
@@ -104,13 +108,16 @@ export function openTranslatePopup(
 	// Drag the popup by its header via pointer events. Pointer events over the
 	// pdf.js viewer iframe never bubble to the reader document, so move/up
 	// listeners are attached to both.
-	header.addEventListener("pointerdown", (event) => {
+	header.addEventListener("pointerdown", (event: PointerEvent) => {
 		const target = event.target as HTMLElement;
 		if (target.closest?.("[data-zctr-close]")) {
 			return;
 		}
 		event.preventDefault();
-		startDrag(entry.doc, entry.iframeWin, popup, event as PointerEvent);
+		// Capture the pointer so move/up events are never lost when the
+		// pointer leaves the iframe (which would leave user-select disabled)
+		target.setPointerCapture?.(event.pointerId);
+		startDrag(entry.doc, entry.iframeWin, popup, event);
 	});
 
 	// Resize handle at the bottom-right corner
@@ -128,10 +135,11 @@ export function openTranslatePopup(
 		"border-bottom-right-radius: 3px",
 		"opacity: 0.6",
 	].join("; ");
-	resizeHandle.addEventListener("pointerdown", (event) => {
+	resizeHandle.addEventListener("pointerdown", (event: PointerEvent) => {
 		event.preventDefault();
 		event.stopPropagation();
-		startResize(entry.doc, entry.iframeWin, popup, event as PointerEvent);
+		(event.target as HTMLElement).setPointerCapture?.(event.pointerId);
+		startResize(entry.doc, entry.iframeWin, popup, event);
 	});
 	popup.append(resizeHandle);
 
@@ -145,6 +153,13 @@ export function openTranslatePopup(
 		"white-space: pre-wrap",
 		"word-break: break-word",
 	].join("; ");
+
+	// The reader's focus manager preventDefaults pointerdown on anything that
+	// is not a known UI element, which would block text selection in the
+	// popup. Stop the event from bubbling up to the reader window.
+	popup.addEventListener("pointerdown", (event) => {
+		event.stopPropagation();
+	});
 
 	popup.append(header, result);
 	const mount = (doc.body || doc.documentElement) as HTMLElement;
