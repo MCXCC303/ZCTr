@@ -47,7 +47,7 @@ export function openTranslatePopup(
 		"display: flex",
 		"flex-direction: column",
 		"background: var(--material-sidepane, #ffffff)",
-		"color: var(--material-text, #000000)",
+		"color: var(--fill-primary, #000000)",
 		"border: 1px solid var(--fill-quaternary, #c8c8c8)",
 		"border-radius: 8px",
 		"box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25)",
@@ -83,7 +83,7 @@ export function openTranslatePopup(
 		"cursor: pointer",
 		"font-size: 12px",
 		"padding: 2px 6px",
-		"color: var(--material-text, #000000)",
+		"color: var(--fill-primary, #000000)",
 		"border-radius: 4px",
 	].join("; ");
 	closeBtn.addEventListener("click", (event) => {
@@ -256,7 +256,7 @@ async function startTranslation(
 			"cursor: pointer",
 			"border: 1px solid var(--fill-quaternary, #c8c8c8)",
 			"background: var(--material-background, #f5f5f5)",
-			"color: var(--material-text, #000000)",
+			"color: var(--fill-primary, #000000)",
 		].join("; ");
 		retry.addEventListener("click", (event) => {
 			event.stopPropagation();
