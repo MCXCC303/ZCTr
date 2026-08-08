@@ -1,6 +1,6 @@
 {
 	"name": "zctr",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "ZCTr - Zotero click-on-translate: translate selected text in PDF reader with LLM (OpenAI-compatible APIs)",
 	"config": {
 		"addonName": "ZCTr",
