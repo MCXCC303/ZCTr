@@ -4,8 +4,9 @@
  * The floating popup is created inside the reader iframe document (so the
  * menu event's viewport coordinates map directly), shows the translation
  * only (no source text), is a singleton (at most one exists), and is closed
- * only via its close button - there is no outside-click or Escape dismissal.
- * It can be dragged by its header and resized from the bottom-right handle.
+ * via its close button or the Escape key (handled by the main-window
+ * keydown listener in hotkey.ts). It can be dragged by its header and
+ * resized from the bottom-right handle.
  *
  * Menu entries live in view-menu.ts / annotation-menu.ts; they call
  * openTranslatePopup() with a registered ReaderEntry.
@@ -199,9 +200,8 @@ export function openTranslatePopup(
 		}
 	}
 
-	// The popup is closed only via its close button (no outside-click or
-	// Escape handling) and is a singleton: opening a new translation
-	// replaces the current popup.
+	// The popup is a singleton (opening a new translation replaces the
+	// current one) and is closed via its close button or the Escape key.
 	currentPopup = popup;
 
 	startTranslation(entry, result, cacheBadge, text);

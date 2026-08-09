@@ -20,7 +20,7 @@ import {
 	MAX_SOURCE_LENGTH,
 	type ReaderLike,
 } from "./common";
-import {openTranslatePopup} from "./translate-popup";
+import {closePopup, openTranslatePopup} from "./translate-popup";
 import {getPref, PREFS} from "../../utils/prefs";
 import {matchesShortcut, parseShortcut} from "../../utils/shortcut";
 
@@ -79,6 +79,13 @@ function findReaderForEvent(event: KeyboardEvent): ReaderLike | null {
 
 function handleWindowKeyDown(event: KeyboardEvent): void {
 	try {
+		// ESC closes the translation popup. Not prevented/defaulted so the
+		// reader's own Escape handling (find popup, fullscreen, etc.) still
+		// works; closing an already-closed popup is a no-op.
+		if (event.key === "Escape") {
+			closePopup();
+			return;
+		}
 		const combo = (getPref(PREFS.SHORTCUT) as string) || "";
 		if (!combo || !matchesShortcut(event, combo)) {
 			return;
