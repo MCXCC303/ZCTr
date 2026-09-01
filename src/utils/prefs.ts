@@ -14,6 +14,16 @@ export const PREFS = {
 	SHORTCUT: "shortcut",
 	/** Whether to use streaming (SSE) translation output. */
 	STREAMING: "streaming",
+	/** Sampling temperature (number; 0 = deterministic). */
+	TEMPERATURE: "temperature",
+	/** Nucleus sampling top_p (number, "" = not sent / provider default). */
+	TOP_P: "topP",
+	/** Top-K sampling (number, "" = not sent / provider default). */
+	TOP_K: "topK",
+	/** Repetition penalty (number, "" = not sent / provider default). */
+	REPETITION_PENALTY: "repetitionPenalty",
+	/** Max output tokens (number, "" = not sent / provider default). */
+	MAX_OUTPUT_TOKENS: "maxOutputTokens",
 	/** Whether the translation cache is persisted across sessions. */
 	CACHE_PERSIST: "cachePersist",
 	/** In-memory translation cache queue length. */

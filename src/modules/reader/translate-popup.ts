@@ -14,6 +14,7 @@
 
 import {getActiveProvider, translateText, translateTextStreaming} from "../translate/translator";
 import {translationCache} from "../translate/cache";
+import {getRuntimeConfig} from "../translate/runtime-config";
 import {getPref, PREFS} from "../../utils/prefs";
 import type {ReaderEntry} from "./common";
 
@@ -220,8 +221,9 @@ async function startTranslation(
 		return;
 	}
 	const targetLang = (getPref(PREFS.TARGET_LANG) as string) || "zh";
-	const streaming = getPref(PREFS.STREAMING) !== false;
-	Zotero.debug(`[ZCTr] startTranslation: streaming=${streaming} targetLang=${targetLang}`);
+	const runtimeConfig = getRuntimeConfig();
+	const streaming = runtimeConfig.stream;
+	Zotero.debug(`[ZCTr] startTranslation: streaming=${streaming} targetLang=${targetLang} temperature=${runtimeConfig.temperature}`);
 
 	const isVisible = (): boolean => !!currentPopup?.contains(result);
 
@@ -231,6 +233,7 @@ async function startTranslation(
 		text,
 		targetLang,
 		provider.id,
+		runtimeConfig,
 	);
 	if (cached !== null) {
 		Zotero.debug(`[ZCTr] cache hit: ${cached.length} chars`);
@@ -272,6 +275,7 @@ async function startTranslation(
 				text,
 				targetLang,
 				provider.id,
+				runtimeConfig,
 				translation,
 			);
 		}
@@ -279,7 +283,7 @@ async function startTranslation(
 
 	if (streaming) {
 		result.textContent = "";
-		translateTextStreaming(provider, text, targetLang, (delta) => {
+		translateTextStreaming(provider, text, targetLang, runtimeConfig, (delta) => {
 			if (isVisible()) {
 				result.textContent += delta;
 			}
@@ -293,7 +297,7 @@ async function startTranslation(
 			.catch(showError);
 	} else {
 		result.textContent = "翻译中…";
-		translateText(provider, text, targetLang)
+		translateText(provider, text, targetLang, runtimeConfig)
 			.then((translation) => {
 				if (isVisible()) {
 					result.textContent = translation;

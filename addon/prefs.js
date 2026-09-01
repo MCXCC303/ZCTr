@@ -6,9 +6,15 @@ pref("activeProviderId", "");
 // 目标语言（如 zh, en）
 pref("targetLang", "zh");
 // 翻译快捷键（修饰键+键的组合字符串，如 "ctrl+alt+t"；空字符串 = 禁用）
-pref("shortcut", "ctrl+alt+t");
+pref("shortcut", "ctrl+l");
 // 使用流式输出（SSE，逐字显示翻译结果）
 pref("streaming", true);
+// 生成参数
+pref("temperature", 0);
+pref("topP", "");
+pref("topK", "");
+pref("repetitionPenalty", "");
+pref("maxOutputTokens", "");
 // 持久化翻译缓存（写入 Zotero 数据目录，重启后保留）
 pref("cachePersist", false);
 // 内存缓存队列长度

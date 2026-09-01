@@ -16,6 +16,10 @@
  */
 
 import {getPref, PREFS, setPref} from "../../utils/prefs";
+import {
+	buildProviderPayloadParams,
+	type TranslationRuntimeConfig,
+} from "./runtime-config";
 
 export type ProviderType = "openai" | "deepseek" | "ollama";
 
@@ -250,6 +254,14 @@ export function getTargetLanguageName(code: string): string {
 // ---------------------------------------------------------------------------
 
 /**
+ * Version of the translation prompt contract. Bump it whenever any of the
+ * following changes (architecture §9): system prompt, output constraints,
+ * translation format rules, context label semantics, terminology injection
+ * syntax. The prompt version participates in the translation cache key.
+ */
+export const TRANSLATION_PROMPT_VERSION = 1;
+
+/**
  * Stable translator role prompt. Kept constant across requests so the
  * conversation prefix stays identical and provider-side prompt caches
  * (DeepSeek context caching, OpenAI automatic caching) hit.
@@ -314,8 +326,15 @@ export async function translateText(
 	provider: ProviderConfig,
 	text: string,
 	targetLang: string,
+	runtimeConfig: TranslationRuntimeConfig,
 ): Promise<string> {
 	const url = `${getApiBaseUrl(provider)}/chat/completions`;
+	const {payload, ignored} = buildProviderPayloadParams(provider.type, runtimeConfig);
+	if (ignored.length) {
+		ztoolkit.log(
+			`[ZCTr] Provider 不支持以下参数，已安全忽略: ${ignored.join(", ")}`,
+		);
+	}
 
 	let response;
 	try {
@@ -324,7 +343,7 @@ export async function translateText(
 			body: JSON.stringify({
 				model: provider.model,
 				messages: buildMessages(text, targetLang),
-				temperature: 0.3,
+				...payload,
 			}),
 			responseType: "json",
 			timeout: 60000,
@@ -361,9 +380,16 @@ export async function translateTextStreaming(
 	provider: ProviderConfig,
 	text: string,
 	targetLang: string,
+	runtimeConfig: TranslationRuntimeConfig,
 	onDelta: (delta: string) => void,
 ): Promise<string> {
 	const url = `${getApiBaseUrl(provider)}/chat/completions`;
+	const {payload, ignored} = buildProviderPayloadParams(provider.type, runtimeConfig);
+	if (ignored.length) {
+		ztoolkit.log(
+			`[ZCTr] Provider 不支持以下参数，已安全忽略: ${ignored.join(", ")}`,
+		);
+	}
 
 	let response: Response;
 	try {
@@ -373,7 +399,7 @@ export async function translateTextStreaming(
 			body: JSON.stringify({
 				model: provider.model,
 				messages: buildMessages(text, targetLang),
-				temperature: 0.3,
+				...payload,
 				stream: true,
 			}),
 		});

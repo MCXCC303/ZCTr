@@ -24,50 +24,67 @@
  *   directory so they survive restarts
  * A limit of -1 means unlimited.
  *
- * The cache key is (text, targetLang, providerId), so switching providers
- * or target languages produces fresh translations. Entries whose item id
- * cannot be resolved fall back to a shared default partition.
+ * The cache key is sha256(canonical JSON of source text, target language,
+ * provider id, prompt version and the effective runtime config). Switching
+ * providers, changing sampling parameters or bumping the prompt version
+ * therefore produces fresh translations. Entries whose item id cannot be
+ * resolved fall back to a shared default partition.
+ *
+ * Each build writes into its own versioned subdirectory (see
+ * src/utils/build-info.ts): releases use `cache-v<version>`, development
+ * builds `cache-v<version>+g<commit>`. The legacy `zctr/cache` directory is
+ * never read or written by this version, so upgrading or rolling back keeps
+ * the other build's cache untouched.
  *
  * Note: the previous single-file cache (zctr/cache.json) is no longer read;
  * the per-article format is incompatible and the old file is left untouched.
  */
 
 import {getPref, PREFS} from "../../utils/prefs";
+import {getCacheSubdirName} from "../../utils/build-info";
+import {TRANSLATION_PROMPT_VERSION} from "./translator";
+import {
+	canonicalRuntimeConfig,
+	type TranslationRuntimeConfig,
+} from "./runtime-config";
 
 export interface TranslationCacheEntry {
-	/** Deterministic cache key (hash of the NFC-normalized source text +
-	 * target language + provider), persisted so lookups do not recompute it. */
+	/** Deterministic cache key (sha256 of the canonical request material),
+	 * persisted so lookups do not recompute it. */
 	key: string;
 	/** The original (unnormalized) text, as sent to the provider. */
 	text: string;
 	targetLang: string;
 	providerId: string;
 	translation: string;
+	/** Snapshot of the effective runtime config (for diagnostics only). */
+	runtime?: Record<string, unknown>;
 }
 
 /**
- * FNV-1a hash with two different offset bases, yielding a compact 64-bit-ish
- * key. Only used to generate cache keys from the NFC-normalized text, so
- * collisions are practically impossible at cache sizes here.
+ * SHA-256 of a UTF-8 string, hex-encoded, via the synchronous Firefox
+ * nsICryptoHash (keeps cache get/put synchronous, unlike crypto.subtle).
  */
-function hashString(str: string): string {
-	const fnv1a = (offsetBasis: number): number => {
-		let h = offsetBasis >>> 0;
-		for (let i = 0; i < str.length; i++) {
-			h ^= str.charCodeAt(i);
-			h = (h * 0x01000193) >>> 0;
-		}
-		return h;
+function sha256Hex(input: string): string {
+	const hash = Cc["@mozilla.org/security/hash;1"].createInstance(
+		Ci.nsICryptoHash,
+	) as unknown as {
+		init: (algorithm: number) => void;
+		update: (data: Uint8Array, length: number) => void;
+		finish: (binary: boolean) => string;
 	};
-	return (
-		fnv1a(0x811c9dc5).toString(36) + fnv1a(0x01000193).toString(36)
-	);
+	hash.init(Ci.nsICryptoHash.SHA256 as number);
+	const bytes = new TextEncoder().encode(input);
+	hash.update(bytes, bytes.length);
+	const digest = hash.finish(false);
+	return Array.from(digest, (ch) =>
+		ch.charCodeAt(0).toString(16).padStart(2, "0"),
+	).join("");
 }
 
 const DEFAULT_LIMIT = 50;
 const DEFAULT_PERSIST_LIMIT = 100;
 const CACHE_DIR_NAME = "zctr";
-const CACHE_SUBDIR_NAME = "cache";
 
 /** Fallback partition for entries without a resolvable item id. */
 const DEFAULT_PARTITION = 0;
@@ -83,18 +100,33 @@ class TranslationCache {
 	 */
 	private saveChains = new Map<number, Promise<void>>();
 
-	private key(text: string, targetLang: string, providerId: string): string {
+	private key(
+		text: string,
+		targetLang: string,
+		providerId: string,
+		runtimeConfig: TranslationRuntimeConfig,
+	): string {
 		// NFC-normalize the source text so visually identical text whose
 		// characters are encoded as precomposed vs. decomposed (e.g. U+00C5
 		// vs U+0041+U+030A) maps to the same key. PDF text extraction can
 		// produce either form, and mixing them used to evict the cache.
 		// NFC (not NFKC) only merges canonically-equivalent forms, so
 		// visually distinct text never collides.
-		// NUL separators: translated text may legitimately contain any other
-		// character, so field boundaries must be unambiguous
-		return hashString(
-			`${text.normalize("NFC")}\u0000${targetLang}\u0000${providerId}`,
-		);
+		//
+		// `stream` is deliberately excluded: it is transport behavior and
+		// does not change the semantic input (runtime canonical form omits
+		// it). `model` is intentionally not part of the key yet - switching
+		// models within the same provider entry is a known limitation to be
+		// addressed with the context cache upgrade (Phase 1).
+		const material = {
+			v: 1, // cache key schema version
+			sourceText: text.normalize("NFC"),
+			targetLang,
+			providerId,
+			runtime: canonicalRuntimeConfig(runtimeConfig),
+			promptVersion: TRANSLATION_PROMPT_VERSION,
+		};
+		return sha256Hex(JSON.stringify(material));
 	}
 
 	private resolveLimit(value: unknown, fallback: number): number {
@@ -140,7 +172,7 @@ class TranslationCache {
 			dir.create(1, 0o755);
 		}
 		const sub = dir.clone();
-		sub.append(CACHE_SUBDIR_NAME);
+		sub.append(getCacheSubdirName());
 		if (!sub.exists()) {
 			sub.create(1, 0o755);
 		}
@@ -200,15 +232,11 @@ class TranslationCache {
 				if (
 					e &&
 					typeof e.text === "string" &&
-					typeof e.translation === "string"
+					typeof e.translation === "string" &&
+					typeof e.key === "string" &&
+					e.key
 				) {
-					// Use the persisted key; fall back to recomputing it for
-					// entries saved before the key was stored
-					const entryKey =
-						typeof e.key === "string" && e.key
-							? e.key
-							: this.key(e.text, e.targetLang || "", e.providerId || "");
-					queue.set(entryKey, e);
+					queue.set(e.key, e);
 				}
 			}
 			this.trim(itemID);
@@ -280,6 +308,7 @@ class TranslationCache {
 		text: string,
 		targetLang: string,
 		providerId: string,
+		runtimeConfig: TranslationRuntimeConfig,
 	): Promise<string | null> {
 		itemID = this.normalizeItemID(itemID);
 		await this.load(itemID);
@@ -287,7 +316,7 @@ class TranslationCache {
 		if (!queue) {
 			return null;
 		}
-		const key = this.key(text, targetLang, providerId);
+		const key = this.key(text, targetLang, providerId, runtimeConfig);
 		const entry = queue.get(key);
 		if (!entry) {
 			return null;
@@ -304,6 +333,7 @@ class TranslationCache {
 		text: string,
 		targetLang: string,
 		providerId: string,
+		runtimeConfig: TranslationRuntimeConfig,
 		translation: string,
 	): Promise<void> {
 		itemID = this.normalizeItemID(itemID);
@@ -312,9 +342,16 @@ class TranslationCache {
 			string,
 			TranslationCacheEntry
 		>;
-		const key = this.key(text, targetLang, providerId);
+		const key = this.key(text, targetLang, providerId, runtimeConfig);
 		queue.delete(key);
-		queue.set(key, {key, text, targetLang, providerId, translation});
+		queue.set(key, {
+			key,
+			text,
+			targetLang,
+			providerId,
+			runtime: canonicalRuntimeConfig(runtimeConfig),
+			translation,
+		});
 		this.trim(itemID);
 		if (this.shouldPersist()) {
 			// Fire-and-forget; save() logs its own failures

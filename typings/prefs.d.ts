@@ -12,6 +12,11 @@ declare namespace _ZoteroTypes {
       "targetLang": string;
       "shortcut": string;
       "streaming": boolean;
+      "temperature": number;
+      "topP": string;
+      "topK": string;
+      "repetitionPenalty": string;
+      "maxOutputTokens": string;
       "cachePersist": boolean;
       "cacheLimit": number;
       "cachePersistLimit": number;

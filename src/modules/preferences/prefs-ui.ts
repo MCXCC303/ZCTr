@@ -26,6 +26,13 @@ import {
 	TARGET_LANGUAGES,
 } from "../translate/translator";
 import {getPref, type PrefKey, PREFS, setPref} from "../../utils/prefs";
+import {
+	REPETITION_PENALTY_MIN,
+	TEMPERATURE_MAX,
+	TEMPERATURE_MIN,
+	TOP_P_MAX,
+	TOP_P_MIN,
+} from "../translate/runtime-config";
 import {parseShortcut, serializeShortcut} from "../../utils/shortcut";
 import {providerForms} from "./forms";
 import {
@@ -331,6 +338,82 @@ function bindGlobalSettings(): void {
 	};
 	bindCacheLimit("zctr-input-cache-limit", PREFS.CACHE_LIMIT, 50);
 	bindCacheLimit("zctr-input-cache-persist-limit", PREFS.CACHE_PERSIST_LIMIT, 100);
+
+	bindGenerationParams();
+}
+
+/**
+ * Bind the "生成参数" (runtime inference parameters) inputs. Empty optional
+ * fields mean "not sent - provider default"; invalid values are rejected and
+ * the input reverts to the current stored value.
+ */
+function bindGenerationParams(): void {
+	if (!doc) {
+		return;
+	}
+	const bindNumber = (
+		inputId: string,
+		prefKey: PrefKey,
+		opts: {min: number; max?: number; integer?: boolean; allowEmpty: boolean},
+	): void => {
+		const input = doc?.getElementById(inputId) as HTMLInputElement | null;
+		if (!input) {
+			return;
+		}
+		const stored = getPref(prefKey);
+		input.value =
+			typeof stored === "number" && Number.isFinite(stored)
+				? String(stored)
+				: "";
+		const revert = (): void => {
+			const v = getPref(prefKey);
+			input.value =
+				typeof v === "number" && Number.isFinite(v) ? String(v) : "";
+		};
+		input.addEventListener("change", () => {
+			const raw = input.value.trim();
+			if (raw === "" && opts.allowEmpty) {
+				setPref(prefKey, "");
+				return;
+			}
+			const n = Number(raw);
+			const valid =
+				Number.isFinite(n) &&
+				(opts.integer ? Number.isInteger(n) : true) &&
+				n >= opts.min &&
+				(opts.max === undefined || n <= opts.max);
+			if (valid) {
+				setPref(prefKey, n);
+			} else {
+				revert();
+			}
+		});
+	};
+
+	bindNumber("zctr-input-temperature", PREFS.TEMPERATURE, {
+		min: TEMPERATURE_MIN,
+		max: TEMPERATURE_MAX,
+		allowEmpty: false,
+	});
+	bindNumber("zctr-input-top-p", PREFS.TOP_P, {
+		min: TOP_P_MIN,
+		max: TOP_P_MAX,
+		allowEmpty: true,
+	});
+	bindNumber("zctr-input-top-k", PREFS.TOP_K, {
+		min: 0,
+		integer: true,
+		allowEmpty: true,
+	});
+	bindNumber("zctr-input-rep-penalty", PREFS.REPETITION_PENALTY, {
+		min: REPETITION_PENALTY_MIN,
+		allowEmpty: true,
+	});
+	bindNumber("zctr-input-max-output-tokens", PREFS.MAX_OUTPUT_TOKENS, {
+		min: 1,
+		integer: true,
+		allowEmpty: true,
+	});
 }
 
 function bindButtons(): void {

@@ -20,4 +20,6 @@ build
 logs
 typings/i10n.d.ts
 
+# cache test
 scratch/
+.cache/
