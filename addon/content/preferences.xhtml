@@ -1,7 +1,8 @@
 <groupbox
         onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window })"
 >
-    <hbox flex="1" style="min-height: 400px">
+    <!-- 供应商设置 -->
+    <hbox align="start">
         <!-- 左栏：供应商列表 -->
         <vbox style="width: 260px; margin-right: 12px">
             <label>
@@ -10,12 +11,12 @@
             <html:div
                     id="zctr-provider-list"
                     style="
-          flex: 1;
+          max-height: 340px;
+          min-height: 160px;
+          overflow-y: auto;
           border: 1px solid var(--fill-quaternary, #ccc);
           border-radius: 6px;
           padding: 4px;
-          overflow-y: auto;
-          min-height: 200px;
         "
             ></html:div>
             <button
@@ -120,9 +121,19 @@
                 <button id="zctr-btn-active" label="设为激活" style="margin-left: 8px"/>
                 <button id="zctr-btn-delete" label="删除" style="margin-left: 8px"/>
             </hbox>
+        </vbox>
+    </hbox>
 
-            <separator style="margin-top: 24px"/>
+    <separator style="margin-top: 24px"/>
 
+    <!-- 全局设置区 -->
+    <label>
+        <html:h3>全局设置</html:h3>
+    </label>
+
+    <hbox align="start">
+        <!-- 左栏：翻译设置 + 生成参数 -->
+        <vbox flex="1" style="margin-right: 24px">
             <label>
                 <html:h3>翻译设置</html:h3>
             </label>
@@ -212,8 +223,11 @@
                     />
                 </hbox>
             </html:details>
+        </vbox>
 
-            <label style="margin-top: 16px">
+        <!-- 右栏：上下文 + 缓存设置 -->
+        <vbox flex="1">
+            <label>
                 <html:h3>上下文</html:h3>
             </label>
             <hbox align="center">
