@@ -1,0 +1,157 @@
+/* =========================================================
+ * ZCTr - Preference Pane styles
+ * Loaded via hooks.ts -> Zotero.PreferencePanes { stylesheets }
+ * See ZCTr-css-ARCHITECTURE.md
+ * ========================================================= */
+
+/* ---------------------------------------------------------
+ * Theme Tokens -- plugin semantic tokens mapped to Zotero
+ * --------------------------------------------------------- */
+:root {
+	--zctr-text: var(--fill-primary);
+	--zctr-text-secondary: var(--fill-secondary);
+	--zctr-text-tertiary: var(--fill-tertiary);
+
+	--zctr-background: var(--material-background);
+	--zctr-surface-subtle: var(--fill-quinary);
+
+	--zctr-hover: var(--material-mix-quinary);
+	--zctr-active: var(--material-mix-quaternary);
+
+	--zctr-divider: var(--material-panedivider);
+
+	--zctr-accent: var(--color-accent);
+	--zctr-error: var(--accent-red);
+}
+
+/* ---------------------------------------------------------
+ * Layout
+ * --------------------------------------------------------- */
+.zctr-provider-layout {
+	width: 100%;
+}
+
+/* Left provider column */
+.zctr-provider-list-pane {
+	width: 30%;
+	margin-right: 10px;
+}
+
+/* Right provider form (flex comes from the XUL flex attribute) */
+.zctr-provider-form {
+	min-width: 0;
+}
+
+/* Divider between provider section and global section */
+.zctr-section-divider {
+	border-bottom: var(--zctr-divider);
+}
+
+/* ---------------------------------------------------------
+ * Components -- group / section containers
+ * --------------------------------------------------------- */
+.zctr-provider-section,
+.zctr-settings-group {
+	box-sizing: border-box;
+	/* 这里必须把border-color和border拆开来才能生效 不知道为啥 */
+	border: 1px solid;
+	border-color: var(--zctr-divider);
+	border-radius: 5px;
+	padding: 10px;
+}
+
+/* Section headings */
+.zctr-section-title {
+}
+
+.zctr-summary-params {
+	font-size: small;
+}
+
+/* ---------------------------------------------------------
+ * Components -- provider list
+ * --------------------------------------------------------- */
+.zctr-provider-list {
+	width: 100%;
+	height: 100%;
+	box-sizing: border-box;
+	overflow-y: auto;
+	background: var(--zctr-background);
+	/* 这里同理 */
+	border: 1px solid;
+	border-color: var(--zctr-divider);
+	border-radius: 5px;
+	padding: 5px;
+}
+
+/* ---------------------------------------------------------
+ * Form controls
+ * --------------------------------------------------------- */
+.zctr-full-width {
+	width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
+}
+
+.zctr-input-medium {
+	width: 140px;
+	box-sizing: border-box;
+}
+
+.zctr-input-select {
+	width: 140px;
+	box-sizing: border-box;
+}
+
+.zctr-input-shortcut {
+	width: 140px;
+	text-align: center;
+	box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------
+ * States -- setting row spacing / hover
+ * --------------------------------------------------------- */
+.zctr-preferences .zctr-setting-row + .zctr-setting-row {
+}
+
+.zctr-item:hover {
+	background: var(--zctr-hover);
+}
+
+.zctr-item.is-active {
+	background: var(--zctr-active);
+	border-color: var(--zctr-accent);
+}
+
+/* ---------------------------------------------------------
+ * Components -- buttons
+ * --------------------------------------------------------- */
+.zctr-btn-add {
+	margin-top: 7px;
+}
+
+.zctr-btn-row {
+	margin-top: 7px;
+}
+
+/* ---------------------------------------------------------
+ * Description / hint text
+ * --------------------------------------------------------- */
+.zctr-description {
+	color: var(--zctr-text-secondary);
+	font-size: small;
+}
+
+/* ---------------------------------------------------------
+ * Error (unused by the pane today; reserved per architecture)
+ * --------------------------------------------------------- */
+.zctr-error {
+	color: var(--zctr-error);
+}
+
+.zctr-error-box {
+	border-inline-start: 3px solid var(--zctr-error);
+	background: var(--zctr-surface-subtle);
+	color: var(--zctr-text);
+}

@@ -71,12 +71,22 @@ export async function assembleContext(
 	selectedText: string,
 	opts: ContextOptions,
 ): Promise<TranslationContext> {
+	// Effective policy: a "包含…" flag only participates in cache identity
+	// (and is only meaningful) when its layer is reachable at the current
+	// level. Otherwise toggling it is a no-op that must neither change the
+	// fingerprint nor imply it has effect. Reachable layers by level:
+	//   selection: none;  local: firstSentence/paragraph + section + adjacent;
+	//   semantic/adaptive: all (+ document summary).
+	const reachDocSummary = (lvl: ContextLevel): boolean =>
+		lvl === "semantic" || lvl === "adaptive";
 	const policy: ContextPolicy = {
 		level: opts.level,
-		includeAbstract: opts.includeAbstract,
-		includeTitle: opts.includeTitle,
-		includeSectionTitle: opts.includeSectionTitle,
-		includeAdjacentParagraphs: opts.includeAdjacentParagraphs,
+		includeAbstract: reachDocSummary(opts.level) ? opts.includeAbstract : false,
+		includeTitle: reachDocSummary(opts.level) ? opts.includeTitle : false,
+		includeSectionTitle:
+			opts.level !== "selection" ? opts.includeSectionTitle : false,
+		includeAdjacentParagraphs:
+			opts.level !== "selection" ? opts.includeAdjacentParagraphs : false,
 	};
 	const ctx: TranslationContext = {
 		selectedText,

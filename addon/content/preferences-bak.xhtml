@@ -1,20 +1,33 @@
-<groupbox class="zctr-preferences" onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window })">
+<groupbox onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window })">
 	<!-- 供应商设置 -->
 	<label>
 		<html:h3>供应商设置</html:h3>
 	</label>
-	<groupbox class="zctr-provider-section">
-		<hbox align="stretch" class="zctr-provider-layout">
+	<groupbox style="
+	border-radius: 5px;
+	border: 1px solid;
+	border-color: var(--material-panedivider);
+	padding: 10px;">
+		<hbox align="stretch">
 			<!-- 左栏：供应商列表 -->
-			<vbox class="zctr-provider-list-pane">
-				<html:div id="zctr-provider-list" class="zctr-provider-list"></html:div>
-				<button id="zctr-btn-add" label="添加供应商" class="zctr-btn-add"/>
+			<vbox style="width: 30%; margin-right: 10px;">
+				<html:div id="zctr-provider-list" style="
+						   box-sizing: border-box;
+						   height: 100%;
+						   overflow-y: auto;
+						   background-color: var(--material-background);
+						   border: 1px solid;
+						   border-radius: 5px;
+						   border-color: var(--material-panedivider);
+						   padding: 5px;
+						   "></html:div>
+				<button id="zctr-btn-add" label="添加供应商" style="margin-top: 5px;"/>
 			</vbox>
 
 			<!-- 右栏：供应商表单 -->
-			<vbox flex="1" class="zctr-provider-form">
+			<vbox flex="1">
 				<label>供应商类型</label>
-				<html:select id="zctr-input-type" class="zctr-full-width">
+				<html:select id="zctr-input-type" style="width: 100%">
 					<html:option value="openai">OpenAI 兼容</html:option>
 					<html:option value="deepseek">DeepSeek</html:option>
 					<html:option value="ollama">Ollama</html:option>
@@ -23,20 +36,20 @@
 				<label>名称</label>
 				<html:input id="zctr-input-name"
 				            placeholder="如: 我的 DeepSeek / 本地 Ollama"
-				            class="zctr-full-width" />
+				            style="width: 100%; box-sizing: border-box;" />
 
 				<!-- OpenAI 兼容：API Base URL -->
 				<vbox id="zctr-field-baseurl">
 					<label>API Base URL</label>
 					<html:input id="zctr-input-baseurl"
 					            placeholder="https://api.openai.com/v1"
-					            class="zctr-full-width" />
+					            style="width: 100%; box-sizing: border-box;" />
 				</vbox>
 
 				<!-- DeepSeek：模型下拉 -->
 				<vbox id="zctr-field-model-select">
 					<label>模型</label>
-					<html:select id="zctr-input-model-select" class="zctr-full-width">
+					<html:select id="zctr-input-model-select" style="width: 100%">
 						<html:option value="deepseek-v4-pro">deepseek-v4-pro</html:option>
 						<html:option value="deepseek-v4-flash">deepseek-v4-flash</html:option>
 					</html:select>
@@ -47,7 +60,7 @@
 					<label>模型</label>
 					<html:input id="zctr-input-model"
 					            placeholder="如: gpt-4o-mini"
-					            class="zctr-full-width"
+					            style="width: 100%; box-sizing: border-box;"
 					/>
 				</vbox>
 
@@ -56,7 +69,7 @@
 					<label>模型</label>
 					<html:select id="zctr-input-model-ollama"
 					             disabled="disabled"
-					             class="zctr-full-width">
+					             style="width: 100%; box-sizing: border-box;">
 						<html:option value="">请先测试连接</html:option>
 					</html:select>
 				</vbox>
@@ -64,11 +77,11 @@
 				<!-- Ollama：端口 + 连通性检测 -->
 				<vbox id="zctr-field-port">
 					<label>Ollama 端口</label>
-					<hbox align="center" class="zctr-setting-row">
-						<html:input id="zctr-input-port" type="number" value="11434" class="zctr-input-medium" />
+					<hbox align="center">
+						<html:input id="zctr-input-port" type="number" value="11434" style="width: 120px" />
 						<button id="zctr-btn-test-ollama" label="测试连接" />
 					</hbox>
-					<label id="zctr-ollama-status" class="zctr-description"></label>
+					<label id="zctr-ollama-status" style="color: #888;"></label>
 				</vbox>
 
 				<!-- API Key（Ollama 不需要） -->
@@ -77,10 +90,10 @@
 					<html:input id="zctr-input-apikey"
 					            type="password"
 					            placeholder="sk-..."
-					            class="zctr-full-width" />
+					            style="width: 100%; box-sizing: border-box;" />
 				</vbox>
 
-				<hbox class="zctr-btn-row">
+				<hbox style="margin-top: 5px;">
 					<button id="zctr-btn-save" label="保存" />
 					<button id="zctr-btn-active" label="设为激活" />
 					<button id="zctr-btn-delete" label="删除" />
@@ -89,34 +102,39 @@
 		</hbox>
 	</groupbox>
 
-	<separator class="zctr-section-divider" />
+	<separator style="
+	border-bottom: var(--material-panedivider);" />
 	<!-- 全局设置区 -->
-	<label class="zctr-section-title">
+	<label>
 		<html:h3>全局设置</html:h3>
 	</label>
 
 	<!-- 翻译设置 -->
-	<label class="zctr-section-title">
+	<label>
 		<html:h2>翻译设置</html:h2>
 	</label>
 
-	<groupbox class="zctr-settings-group">
-		<hbox align="center" class="zctr-setting-row">
+	<groupbox style="
+	border-radius: 5px;
+	border: 1px solid;
+	border-color: var(--material-panedivider);
+	padding: 10px;">
+		<hbox align="center">
 			<label flex="1">目标语言</label>
-			<html:select id="zctr-input-targetlang" class="zctr-input-select">
+			<html:select id="zctr-input-targetlang" style="width: 160px">
 				<!-- Options populated by JS from TARGET_LANGUAGES -->
 			</html:select>
 		</hbox>
 
-		<hbox align="center" class="zctr-setting-row">
+		<hbox align="center">
 			<label flex="1">点按翻译快捷键</label>
 			<html:input id="zctr-input-shortcut"
 			            readonly="readonly"
 			            placeholder="点击后按组合键，Esc 清除"
-			            class="zctr-input-shortcut" />
+			            style="width: 120px; text-align: center" />
 		</hbox>
 
-		<hbox align="center" class="zctr-setting-row">
+		<hbox align="center">
 			<html:input id="zctr-input-streaming" type="checkbox" />
 			<label flex="1">使用流式输出</label>
 		</hbox>
@@ -124,57 +142,65 @@
 
 
 	<!-- 生成参数 -->
-	<label class="zctr-section-title">
+	<label>
 		<html:h2>生成参数</html:h2>
 	</label>
 
-	<groupbox class="zctr-settings-group">
-		<hbox align="center" class="zctr-setting-row">
+	<groupbox style="
+	border-radius: 5px;
+	border: 1px solid;
+	border-color: var(--material-panedivider);
+	padding: 10px;">
+		<hbox align="center">
 			<label flex="1">Temperature</label>
-			<html:input id="zctr-input-temperature" type="number" min="0" max="2" step="0.1" class="zctr-input-medium" />
+			<html:input id="zctr-input-temperature" type="number" min="0" max="2" step="0.1" style="width: 120px" />
 		</hbox>
 
-		<hbox align="center" class="zctr-setting-row">
+		<hbox align="center">
 			<label flex="1">Max output tokens</label>
 			<html:input id="zctr-input-max-output-tokens" type="number" min="1" step="1" placeholder="auto"
-			            class="zctr-input-medium" />
+			            style="width: 120px" />
 		</hbox>
 
 		<html:details>
-			<html:summary class="zctr-summary-params">
+			<html:summary>
 				高级参数（仅对支持的 Provider/Model 生效）
 			</html:summary>
 
-			<hbox align="center" class="zctr-setting-row">
+			<hbox align="center">
 				<label flex="1">Top P</label>
 				<html:input id="zctr-input-top-p" type="number" min="0" max="1" step="0.05" placeholder="默认"
-				            class="zctr-input-medium" />
+				            style="width: 120px" />
 			</hbox>
 
-			<hbox align="center" class="zctr-setting-row">
+			<hbox align="center">
 				<label flex="1">Top K</label>
 				<html:input id="zctr-input-top-k" type="number" min="0" step="1" placeholder="默认"
-				            class="zctr-input-medium" />
+				            style="width: 120px" />
 			</hbox>
 
-			<hbox align="center" class="zctr-setting-row">
+			<hbox align="center">
 				<label flex="1">Repetition Penalty</label>
 				<html:input id="zctr-input-rep-penalty" type="number" min="1" step="0.05" placeholder="默认"
-				            class="zctr-input-medium" />
+				            style="width: 120px" />
 			</hbox>
 		</html:details>
 	</groupbox>
 
 
 	<!-- 上下文 -->
-	<label class="zctr-section-title">
+	<label>
 		<html:h2>上下文</html:h2>
 	</label>
 
-	<groupbox class="zctr-settings-group">
-		<hbox align="center" class="zctr-setting-row">
+	<groupbox style="
+	border-radius: 5px;
+	border: 1px solid;
+	border-color: var(--material-panedivider);
+	padding: 10px;">
+		<hbox align="center">
 			<label flex="1">上下文级别</label>
-			<html:select id="zctr-input-context-level" class="zctr-input-select">
+			<html:select id="zctr-input-context-level" style="width: 160px">
 				<html:option value="selection">Select</html:option>
 				<html:option value="local">Local</html:option>
 				<html:option value="semantic">Semantic</html:option>
@@ -182,53 +208,66 @@
 			</html:select>
 		</hbox>
 
-		<label id="zctr-context-level-hint" class="zctr-description"></label>
+		<label id="zctr-context-level-hint" style="
+					color: var(--fill-secondary);
+					font-size: small;
+				"></label>
 
-		<hbox align="center" class="zctr-setting-row">
+		<hbox align="center">
 			<html:input id="zctr-input-context-abstract" type="checkbox" />
 			<label flex="1">包含 Abstract</label>
 		</hbox>
 
-		<hbox align="center" class="zctr-setting-row">
+		<hbox align="center">
 			<html:input id="zctr-input-context-title" type="checkbox" />
 			<label flex="1">包含条目标题</label>
 		</hbox>
 
-		<hbox align="center" class="zctr-setting-row">
+		<hbox align="center">
 			<html:input id="zctr-input-context-section-title" type="checkbox" />
 			<label flex="1">包含小节标题（可用时）</label>
 		</hbox>
 
-		<hbox align="center" class="zctr-setting-row">
+		<hbox align="center">
 			<html:input id="zctr-input-context-adjacent" type="checkbox" />
 			<label flex="1">包含相邻段落</label>
 		</hbox>
 
-		<label class="zctr-description">上下文仅用于消除指代与术语歧义，不参与译文输出</label>
+		<label style="
+					   color: var(--fill-secondary);
+					   font-size: small;
+					   ">上下文仅用于消除指代与术语歧义，不参与译文输出</label>
 	</groupbox>
 
 
 	<!-- 缓存设置 -->
-	<label class="zctr-section-title">
+	<label>
 		<html:h2>缓存设置</html:h2>
 	</label>
 
-	<groupbox class="zctr-settings-group">
-		<hbox align="center" class="zctr-setting-row">
+	<groupbox style="
+	border-radius: 5px;
+	border: 1px solid;
+	border-color: var(--material-panedivider);
+	padding: 10px;">
+		<hbox align="center">
 			<html:input id="zctr-input-cache-persist" type="checkbox" />
 			<label flex="1">持久化翻译缓存</label>
 		</hbox>
 
-		<hbox align="center" class="zctr-setting-row">
+		<hbox align="center">
 			<label flex="1">缓存队列长度（内存）</label>
-			<html:input id="zctr-input-cache-limit" type="number" value="50" class="zctr-input-medium" />
+			<html:input id="zctr-input-cache-limit" type="number" value="50" style="width: 120px" />
 		</hbox>
 
-		<hbox align="center" class="zctr-setting-row">
+		<hbox align="center">
 			<label flex="1">缓存队列长度（文件）</label>
-			<html:input id="zctr-input-cache-persist-limit" type="number" value="100" class="zctr-input-medium" />
+			<html:input id="zctr-input-cache-persist-limit" type="number" value="100" style="width: 120px" />
 		</hbox>
 
-		<label class="zctr-description">-1 表示不限制长度（缓存不断累积可能导致运行缓慢）</label>
+		<label style="
+					  color: var(--fill-secondary);
+					  font-size: small;
+					  ">-1 表示不限制长度（缓存不断累积可能导致运行缓慢）</label>
 	</groupbox>
 </groupbox>

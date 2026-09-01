@@ -25,6 +25,10 @@ async function onStartup() {
 		src: rootURI + "content/preferences.xhtml",
 		label: "ZCTr",
 		image: `chrome://${addon.data.config.addonRef}/content/icons/favicon.svg`,
+		// Absolute URL required: resolveURI() resolves relative paths against
+		// the addon package ROOT (.../zc-tr.xpi!/), but the stylesheet lives in
+		// the content/ directory - a bare "preferences.css" would 404.
+		stylesheets: [rootURI + "content/preferences.css"],
 	});
 	Zotero.debug("[ZCTr] PreferencePanes registered");
 

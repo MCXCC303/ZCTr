@@ -52,6 +52,12 @@ let doc: Document | null = null;
 /** Provider id currently being edited; null means "new provider" mode. */
 let editingId: string | null = null;
 
+/**
+ * Context level union, kept local to the preferences layer so it does not
+ * depend on the context engine module (see ZCTr-modules-ARCHITECTURE.md §2).
+ */
+type ContextLevel = "selection" | "local" | "semantic" | "adaptive";
+
 export async function registerPrefsScripts(window: Window): Promise<void> {
 	win = window;
 	doc = window.document;
@@ -359,6 +365,7 @@ function bindContextSettings(): void {
 		levelSelect.value = (getPref(PREFS.CONTEXT_LEVEL) as string) || "local";
 		levelSelect.addEventListener("change", () => {
 			setPref(PREFS.CONTEXT_LEVEL, levelSelect.value);
+			updateContextLevelView();
 		});
 	}
 
@@ -382,6 +389,71 @@ function bindContextSettings(): void {
 		"zctr-input-context-adjacent",
 		PREFS.CONTEXT_INCLUDE_ADJACENT_PARAGRAPHS,
 	);
+
+	updateContextLevelView();
+}
+
+/** Context level -> which "包含…" toggles are effective. */
+const CONTEXT_LEVEL_TOGGLES: Array<{
+	inputId: string;
+	prefKey: PrefKey;
+	levels: ContextLevel[];
+}> = [
+	{
+		inputId: "zctr-input-context-abstract",
+		prefKey: PREFS.CONTEXT_INCLUDE_ABSTRACT,
+		levels: ["semantic", "adaptive"],
+	},
+	{
+		inputId: "zctr-input-context-title",
+		prefKey: PREFS.CONTEXT_INCLUDE_TITLE,
+		levels: ["semantic", "adaptive"],
+	},
+	{
+		inputId: "zctr-input-context-section-title",
+		prefKey: PREFS.CONTEXT_INCLUDE_SECTION_TITLE,
+		levels: ["local", "semantic", "adaptive"],
+	},
+	{
+		inputId: "zctr-input-context-adjacent",
+		prefKey: PREFS.CONTEXT_INCLUDE_ADJACENT_PARAGRAPHS,
+		levels: ["local", "semantic", "adaptive"],
+	},
+];
+
+const CONTEXT_LEVEL_HINTS: Record<ContextLevel, string> = {
+	selection: "仅选段，不附加任何上下文",
+	local: "含句 + 当前段 + 小节标题 (+ 相邻段)",
+	semantic: "含句 + 当前段 + 小节标题 + 条目标题 + 摘要",
+	adaptive: "含句 + 当前段 + 小节标题 (+ 条目标题 + 摘要)",
+};
+
+/**
+ * Grey out the "包含…" toggles that do not apply to the currently selected
+ * context level, and update the per-level hint. This prevents the confusion
+ * of a checked-but-ineffective setting (e.g. "包含 Abstract" at Local level).
+ */
+function updateContextLevelView(): void {
+	if (!doc) {
+		return;
+	}
+	const level = ((getPref(PREFS.CONTEXT_LEVEL) as string) || "local") as ContextLevel;
+	const hint = doc.getElementById("zctr-context-level-hint") as HTMLElement | null;
+	if (hint) {
+		hint.textContent = CONTEXT_LEVEL_HINTS[level] ?? "";
+	}
+	for (const toggle of CONTEXT_LEVEL_TOGGLES) {
+		const input = doc.getElementById(toggle.inputId) as HTMLInputElement | null;
+		if (!input) {
+			continue;
+		}
+		const enabled = toggle.levels.includes(level);
+		input.disabled = !enabled;
+		const row = input.parentElement as HTMLElement | null;
+		if (row) {
+			row.style.opacity = enabled ? "" : "0.45";
+		}
+	}
 }
 
 /**
