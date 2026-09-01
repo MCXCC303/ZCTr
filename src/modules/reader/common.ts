@@ -1,38 +1,27 @@
 /**
- * Reader integration shared types and helpers.
+ * Reader integration shared helpers.
  *
  * The view menu, annotation menu and translation popup all operate on a
  * context menu event that carries a reader reference; the menu handlers
  * register a ReaderEntry (capturing the reader's document/iframe/itemID)
  * and the popup consumes it when the menu item is clicked.
+ *
+ * Structural types (ViewLike / ReaderLike / ContextMenuEvent / ReaderEntry)
+ * live in src/types/reader.ts and are re-exported here for convenience.
  */
 
-export type ViewLike = {
-	_iframeWindow?: Window;
-};
-
-export type ReaderLike = {
-	itemID?: number;
-	_iframeWindow?: Window;
-	_internalReader?: {
-		_primaryView?: ViewLike;
-		_lastView?: ViewLike;
-	};
-};
-
-export type ContextMenuEvent = {
-	reader?: ReaderLike;
-	params?: {x?: number; y?: number; ids?: string[]};
-	append?: (options: {label: string; onCommand: () => void}) => void;
-};
-
-export type ReaderEntry = {
-	view: ViewLike;
-	doc: Document;
-	iframeWin: Window;
-	/** Attachment item id - scopes the translation cache to this article. */
-	itemID?: number;
-};
+export type {
+	ContextMenuEvent,
+	ReaderEntry,
+	ReaderLike,
+	ViewLike,
+} from "../../types/reader";
+import type {
+	ContextMenuEvent,
+	ReaderEntry,
+	ReaderLike,
+	ViewLike,
+} from "../../types/reader";
 
 /** Cap on stale registry entries (menus opened but never clicked). */
 const REGISTRY_LIMIT = 50;

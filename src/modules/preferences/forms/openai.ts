@@ -4,7 +4,7 @@
  */
 
 import {getWin, inputValue, type ProviderForm, setInputValue, setVisible,} from "../provider-form";
-import type {ProviderConfig} from "../../translate/translator";
+import type {ProviderConfig} from "../../provider/types";
 
 export const openaiForm: ProviderForm = {
 	setVisible(visible: boolean): void {

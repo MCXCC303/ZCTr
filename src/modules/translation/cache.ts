@@ -42,11 +42,17 @@
 
 import {getPref, PREFS} from "../../utils/prefs";
 import {getCacheSubdirName} from "../../utils/build-info";
-import {TRANSLATION_PROMPT_VERSION} from "./translator";
+import {TRANSLATION_PROMPT_VERSION} from "./prompt";
 import {
 	canonicalRuntimeConfig,
 	type TranslationRuntimeConfig,
-} from "./runtime-config";
+} from "../runtime/runtime-config";
+import {
+	canonicalContext,
+	CONTEXT_VERSION,
+	hasAttachedContext,
+	type TranslationContext,
+} from "../context/context";
 
 export interface TranslationCacheEntry {
 	/** Deterministic cache key (sha256 of the canonical request material),
@@ -105,6 +111,7 @@ class TranslationCache {
 		targetLang: string,
 		providerId: string,
 		runtimeConfig: TranslationRuntimeConfig,
+		context: TranslationContext,
 	): string {
 		// NFC-normalize the source text so visually identical text whose
 		// characters are encoded as precomposed vs. decomposed (e.g. U+00C5
@@ -116,15 +123,26 @@ class TranslationCache {
 		// `stream` is deliberately excluded: it is transport behavior and
 		// does not change the semantic input (runtime canonical form omits
 		// it). `model` is intentionally not part of the key yet - switching
-		// models within the same provider entry is a known limitation to be
-		// addressed with the context cache upgrade (Phase 1).
+		// models within the same provider entry is a known limitation
+		// (deferred, see ZCTr-context-M1-plan.md §8).
+		//
+		// The context fingerprint covers every attached context field
+		// (policy, document, local); the same selection under a different
+		// abstract / local context / policy must not hit the old entry
+		// (architecture §15).
+		const contextFingerprint = hasAttachedContext(context)
+			? sha256Hex(JSON.stringify(canonicalContext(context)))
+			: null;
 		const material = {
-			v: 1, // cache key schema version
+			v: 2, // cache key schema version
 			sourceText: text.normalize("NFC"),
 			targetLang,
 			providerId,
 			runtime: canonicalRuntimeConfig(runtimeConfig),
 			promptVersion: TRANSLATION_PROMPT_VERSION,
+			context: contextFingerprint
+				? {version: CONTEXT_VERSION, fingerprint: contextFingerprint}
+				: null,
 		};
 		return sha256Hex(JSON.stringify(material));
 	}
@@ -309,6 +327,7 @@ class TranslationCache {
 		targetLang: string,
 		providerId: string,
 		runtimeConfig: TranslationRuntimeConfig,
+		context: TranslationContext,
 	): Promise<string | null> {
 		itemID = this.normalizeItemID(itemID);
 		await this.load(itemID);
@@ -316,7 +335,7 @@ class TranslationCache {
 		if (!queue) {
 			return null;
 		}
-		const key = this.key(text, targetLang, providerId, runtimeConfig);
+		const key = this.key(text, targetLang, providerId, runtimeConfig, context);
 		const entry = queue.get(key);
 		if (!entry) {
 			return null;
@@ -334,6 +353,7 @@ class TranslationCache {
 		targetLang: string,
 		providerId: string,
 		runtimeConfig: TranslationRuntimeConfig,
+		context: TranslationContext,
 		translation: string,
 	): Promise<void> {
 		itemID = this.normalizeItemID(itemID);
@@ -342,7 +362,7 @@ class TranslationCache {
 			string,
 			TranslationCacheEntry
 		>;
-		const key = this.key(text, targetLang, providerId, runtimeConfig);
+		const key = this.key(text, targetLang, providerId, runtimeConfig, context);
 		queue.delete(key);
 		queue.set(key, {
 			key,

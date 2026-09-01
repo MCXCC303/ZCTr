@@ -10,13 +10,13 @@
  *
  * Menu entries live in view-menu.ts / annotation-menu.ts; they call
  * openTranslatePopup() with a registered ReaderEntry.
+ *
+ * All translation business (context assembly, cache, provider transport)
+ * lives in the translation pipeline; this module is UI-only.
  */
 
-import {getActiveProvider, translateText, translateTextStreaming} from "../translate/translator";
-import {translationCache} from "../translate/cache";
-import {getRuntimeConfig} from "../translate/runtime-config";
-import {getPref, PREFS} from "../../utils/prefs";
-import type {ReaderEntry} from "./common";
+import {startTranslation as startPipelineTranslation} from "../translation/pipeline";
+import type {ReaderEntry} from "../../types/reader";
 
 const POPUP_ID = "zctr-translate-popup";
 
@@ -214,28 +214,19 @@ async function startTranslation(
 	cacheBadge: HTMLElement,
 	text: string,
 ): Promise<void> {
-	const provider = getActiveProvider();
-	if (!provider) {
+	// Delegate the whole request (context, cache, transport) to the pipeline.
+	const handle = await startPipelineTranslation(entry, text);
+	if (!handle) {
 		result.textContent =
 			"⚠ 未配置翻译供应商，请到 Zotero 设置 → ZCTr 中添加并激活一个供应商。";
 		return;
 	}
-	const targetLang = (getPref(PREFS.TARGET_LANG) as string) || "zh";
-	const runtimeConfig = getRuntimeConfig();
-	const streaming = runtimeConfig.stream;
-	Zotero.debug(`[ZCTr] startTranslation: streaming=${streaming} targetLang=${targetLang} temperature=${runtimeConfig.temperature}`);
 
 	const isVisible = (): boolean => !!currentPopup?.contains(result);
 
 	// Local cache hit: show the previous translation instantly
-	const cached = await translationCache.get(
-		entry.itemID,
-		text,
-		targetLang,
-		provider.id,
-		runtimeConfig,
-	);
-	if (cached !== null) {
+	if (handle.fromCache) {
+		const cached = await handle.run();
 		Zotero.debug(`[ZCTr] cache hit: ${cached.length} chars`);
 		cacheBadge.hidden = false;
 		result.textContent = cached;
@@ -268,40 +259,27 @@ async function startTranslation(
 		result.append(retry);
 	};
 
-	const cachePut = (translation: string): void => {
-		if (translation) {
-			void translationCache.put(
-				entry.itemID,
-				text,
-				targetLang,
-				provider.id,
-				runtimeConfig,
-				translation,
-			);
-		}
-	};
-
-	if (streaming) {
+	if (handle.streaming) {
 		result.textContent = "";
-		translateTextStreaming(provider, text, targetLang, runtimeConfig, (delta) => {
-			if (isVisible()) {
-				result.textContent += delta;
-			}
-		})
+		handle
+			.run((delta) => {
+				if (isVisible()) {
+					result.textContent += delta;
+				}
+			})
 			.then((full) => {
 				if (isVisible() && full) {
 					result.textContent = full;
-					cachePut(full);
 				}
 			})
 			.catch(showError);
 	} else {
 		result.textContent = "翻译中…";
-		translateText(provider, text, targetLang, runtimeConfig)
+		handle
+			.run()
 			.then((translation) => {
 				if (isVisible()) {
 					result.textContent = translation;
-					cachePut(translation);
 				}
 			})
 			.catch(showError);

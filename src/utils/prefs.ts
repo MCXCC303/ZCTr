@@ -24,6 +24,16 @@ export const PREFS = {
 	REPETITION_PENALTY: "repetitionPenalty",
 	/** Max output tokens (number, "" = not sent / provider default). */
 	MAX_OUTPUT_TOKENS: "maxOutputTokens",
+	/** Context level: selection | local | semantic | adaptive. */
+	CONTEXT_LEVEL: "contextLevel",
+	/** Include Abstract in the document-level context. */
+	CONTEXT_INCLUDE_ABSTRACT: "contextIncludeAbstract",
+	/** Include item Title in the document-level context. */
+	CONTEXT_INCLUDE_TITLE: "contextIncludeTitle",
+	/** Include the PDF outline section title when available. */
+	CONTEXT_INCLUDE_SECTION_TITLE: "contextIncludeSectionTitle",
+	/** Include previous/next paragraphs around the selection. */
+	CONTEXT_INCLUDE_ADJACENT_PARAGRAPHS: "contextIncludeAdjacentParagraphs",
 	/** Whether the translation cache is persisted across sessions. */
 	CACHE_PERSIST: "cachePersist",
 	/** In-memory translation cache queue length. */

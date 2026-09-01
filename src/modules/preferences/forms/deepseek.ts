@@ -4,7 +4,7 @@
  */
 
 import {inputValue, type ProviderForm, selectValue, setSelectValue, setVisible,} from "../provider-form";
-import {DEEPSEEK_MODELS, type ProviderConfig,} from "../../translate/translator";
+import {DEEPSEEK_MODELS, type ProviderConfig} from "../../provider/types";
 
 export const deepseekForm: ProviderForm = {
 	setVisible(visible: boolean): void {

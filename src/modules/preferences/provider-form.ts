@@ -8,7 +8,7 @@
  * each form manages only its own fields in the XHTML fragment.
  */
 
-import type {ProviderConfig} from "../translate/translator";
+import type {ProviderConfig} from "../provider/types";
 
 export const XHTML_NS = "http://www.w3.org/1999/xhtml";
 

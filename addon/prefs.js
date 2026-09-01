@@ -15,6 +15,12 @@ pref("topP", "");
 pref("topK", "");
 pref("repetitionPenalty", "");
 pref("maxOutputTokens", "");
+// 上下文：级别（selection/local/semantic/adaptive）与注入开关
+pref("contextLevel", "adaptive");
+pref("contextIncludeAbstract", true);
+pref("contextIncludeTitle", true);
+pref("contextIncludeSectionTitle", true);
+pref("contextIncludeAdjacentParagraphs", false);
 // 持久化翻译缓存（写入 Zotero 数据目录，重启后保留）
 pref("cachePersist", false);
 // 内存缓存队列长度

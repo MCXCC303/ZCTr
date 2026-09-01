@@ -17,6 +17,11 @@ declare namespace _ZoteroTypes {
       "topK": string;
       "repetitionPenalty": string;
       "maxOutputTokens": string;
+      "contextLevel": string;
+      "contextIncludeAbstract": boolean;
+      "contextIncludeTitle": boolean;
+      "contextIncludeSectionTitle": boolean;
+      "contextIncludeAdjacentParagraphs": boolean;
       "cachePersist": boolean;
       "cacheLimit": number;
       "cachePersistLimit": number;

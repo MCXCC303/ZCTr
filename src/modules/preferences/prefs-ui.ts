@@ -14,17 +14,18 @@
 import {
 	DEEPSEEK_MODELS,
 	generateProviderId,
-	getProviderApiKey,
-	getProviders,
 	PROVIDER_TYPE_LABELS,
 	PROVIDER_TYPES,
 	type ProviderConfig,
 	type ProviderType,
+} from "../provider/types";
+import {getProviderApiKey, setProviderApiKey} from "../provider/credentials";
+import {
+	getProviders,
 	saveProviders,
 	setActiveProvider,
-	setProviderApiKey,
-	TARGET_LANGUAGES,
-} from "../translate/translator";
+} from "../provider/registry";
+import {TARGET_LANGUAGES} from "../provider/languages";
 import {getPref, type PrefKey, PREFS, setPref} from "../../utils/prefs";
 import {
 	REPETITION_PENALTY_MIN,
@@ -32,7 +33,7 @@ import {
 	TEMPERATURE_MIN,
 	TOP_P_MAX,
 	TOP_P_MIN,
-} from "../translate/runtime-config";
+} from "../runtime/runtime-config";
 import {parseShortcut, serializeShortcut} from "../../utils/shortcut";
 import {providerForms} from "./forms";
 import {
@@ -340,6 +341,47 @@ function bindGlobalSettings(): void {
 	bindCacheLimit("zctr-input-cache-persist-limit", PREFS.CACHE_PERSIST_LIMIT, 100);
 
 	bindGenerationParams();
+	bindContextSettings();
+}
+
+/**
+ * Bind the "上下文" (translation context) settings: level dropdown and the
+ * four injection toggles. Saved immediately on change.
+ */
+function bindContextSettings(): void {
+	if (!doc) {
+		return;
+	}
+	const levelSelect = doc.getElementById(
+		"zctr-input-context-level",
+	) as HTMLSelectElement | null;
+	if (levelSelect) {
+		levelSelect.value = (getPref(PREFS.CONTEXT_LEVEL) as string) || "local";
+		levelSelect.addEventListener("change", () => {
+			setPref(PREFS.CONTEXT_LEVEL, levelSelect.value);
+		});
+	}
+
+	const bindCheckbox = (inputId: string, prefKey: PrefKey): void => {
+		const input = doc?.getElementById(inputId) as HTMLInputElement | null;
+		if (!input) {
+			return;
+		}
+		input.checked = !!getPref(prefKey);
+		input.addEventListener("change", () => {
+			setPref(prefKey, input.checked);
+		});
+	};
+	bindCheckbox("zctr-input-context-abstract", PREFS.CONTEXT_INCLUDE_ABSTRACT);
+	bindCheckbox("zctr-input-context-title", PREFS.CONTEXT_INCLUDE_TITLE);
+	bindCheckbox(
+		"zctr-input-context-section-title",
+		PREFS.CONTEXT_INCLUDE_SECTION_TITLE,
+	);
+	bindCheckbox(
+		"zctr-input-context-adjacent",
+		PREFS.CONTEXT_INCLUDE_ADJACENT_PARAGRAPHS,
+	);
 }
 
 /**

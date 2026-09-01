@@ -213,6 +213,54 @@
                 </hbox>
             </html:details>
 
+            <label style="margin-top: 16px">
+                <html:h3>上下文</html:h3>
+            </label>
+            <hbox align="center">
+                <label flex="1">上下文级别</label>
+                <html:select id="zctr-input-context-level" style="width: 160px">
+                    <html:option value="selection">Select</html:option>
+                    <html:option value="local">Local</html:option>
+                    <html:option value="semantic">Semantic</html:option>
+                    <html:option value="adaptive">Adaptive</html:option>
+                </html:select>
+            </hbox>
+            <hbox align="center" style="margin-top: 8px">
+                <html:input
+                        id="zctr-input-context-abstract"
+                        type="checkbox"
+                        style="margin: 0 6px 0 0"
+                />
+                <label flex="1">包含 Abstract</label>
+            </hbox>
+            <hbox align="center" style="margin-top: 8px">
+                <html:input
+                        id="zctr-input-context-title"
+                        type="checkbox"
+                        style="margin: 0 6px 0 0"
+                />
+                <label flex="1">包含条目标题</label>
+            </hbox>
+            <hbox align="center" style="margin-top: 8px">
+                <html:input
+                        id="zctr-input-context-section-title"
+                        type="checkbox"
+                        style="margin: 0 6px 0 0"
+                />
+                <label flex="1">包含小节标题（可用时）</label>
+            </hbox>
+            <hbox align="center" style="margin-top: 8px">
+                <html:input
+                        id="zctr-input-context-adjacent"
+                        type="checkbox"
+                        style="margin: 0 6px 0 0"
+                />
+                <label flex="1">包含相邻段落</label>
+            </hbox>
+            <label style="color: #888; margin-top: 4px">
+                上下文仅用于消除指代与术语歧义，不参与译文输出。
+            </label>
+
             <label>
                 <html:h3>缓存设置</html:h3>
             </label>

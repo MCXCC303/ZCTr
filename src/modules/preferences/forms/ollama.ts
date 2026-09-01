@@ -8,10 +8,12 @@
 import {getDoc, getWin, inputValue, type ProviderForm, selectValue, setInputValue, setVisible,} from "../provider-form";
 import {
 	OLLAMA_DEFAULT_PORT,
-	type OllamaModelInfo,
 	type ProviderConfig,
+} from "../../provider/types";
+import {
+	type OllamaModelInfo,
 	testOllamaConnection,
-} from "../../translate/translator";
+} from "../../provider/transport";
 
 const XHTML_NS = "http://www.w3.org/1999/xhtml";
 
