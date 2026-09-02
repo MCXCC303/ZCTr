@@ -356,11 +356,17 @@ class TranslationCache {
 		const key = this.key(text, targetLang, providerId, runtimeConfig, context, terminology);
 		const entry = queue.get(key);
 		if (!entry) {
+			Zotero.debug(
+				`[ZCTr] cache miss: item=${itemID} text_len=${text.length} lang=${targetLang} provider=${providerId} key=${key.slice(0, 12)}`,
+			);
 			return null;
 		}
 		// Refresh recency: Map iteration order follows insertion order
 		queue.delete(key);
 		queue.set(key, entry);
+		Zotero.debug(
+			`[ZCTr] cache hit: item=${itemID} text_len=${text.length} lang=${targetLang} provider=${providerId} key=${key.slice(0, 12)}`,
+		);
 		return entry.translation;
 	}
 
@@ -391,6 +397,9 @@ class TranslationCache {
 			runtime: canonicalRuntimeConfig(runtimeConfig),
 			translation,
 		});
+		Zotero.debug(
+			`[ZCTr] cache put: item=${itemID} text_len=${text.length} lang=${targetLang} provider=${providerId} key=${key.slice(0, 12)}`,
+		);
 		this.trim(itemID);
 		if (this.shouldPersist()) {
 			// Fire-and-forget; save() logs its own failures

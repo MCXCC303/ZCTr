@@ -62,6 +62,9 @@ export async function startTranslation(
 	}
 	const targetLang = (getPref(PREFS.TARGET_LANG) as string) || "zh";
 	const runtimeConfig = getRuntimeConfig();
+	Zotero.debug(
+		`[ZCTr] translation request: item=${entry.itemID} text_len=${text.length} target=${targetLang} provider=${provider.id} stream=${runtimeConfig.stream}`,
+	);
 
 	let context: TranslationContext;
 	try {

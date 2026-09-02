@@ -65,6 +65,9 @@ export async function translateText(
 			`[ZCTr] Provider 不支持以下参数，已安全忽略: ${ignored.join(", ")}`,
 		);
 	}
+	Zotero.debug(
+		`[ZCTr] provider request: model=${provider.model} type=${provider.type} messages=${messages.length} target_chars=${messages[messages.length - 1]?.content?.length ?? 0}`,
+	);
 
 	let response;
 	try {
@@ -124,6 +127,9 @@ export async function translateTextStreaming(
 			`[ZCTr] Provider 不支持以下参数，已安全忽略: ${ignored.join(", ")}`,
 		);
 	}
+	Zotero.debug(
+		`[ZCTr] provider request: model=${provider.model} type=${provider.type} messages=${messages.length} target_chars=${messages[messages.length - 1]?.content?.length ?? 0}`,
+	);
 
 	let response: Response;
 	try {

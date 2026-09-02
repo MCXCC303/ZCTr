@@ -500,6 +500,9 @@ function buildCollectWindow(
 			note: noteInput.value || undefined,
 		});
 		if (!res.ok) {
+			log(
+				`[ZCTr] 收录被拒绝: reason=${res.reason} termbase=${checkedTermbaseId() || "(未选)"}`,
+			);
 			alert(win, "无法收录", res.message);
 			return;
 		}

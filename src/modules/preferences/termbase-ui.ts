@@ -322,6 +322,9 @@ async function persistAndRefresh(
 		setStatusMessage(`保存失败: ${(error as Error).message}`);
 		return;
 	}
+	ztoolkit.log(
+		`[ZCTr] 词条操作: ${message} termbase=${tb.termbaseId} entries=${tb.entries.length}`,
+	);
 	editingConceptId = selectConceptId;
 	await refreshTermbases();
 	setStatusMessage(message);
@@ -374,6 +377,9 @@ async function createTermbase(): Promise<void> {
 		setStatusMessage(`新建失败: ${(error as Error).message}`);
 		return;
 	}
+	ztoolkit.log(
+		`[ZCTr] 术语库已新建: ${termbase.termbaseId} (${termbase.sourceLanguage}→${termbase.targetLanguage})`,
+	);
 	selectedId = termbase.termbaseId;
 	setActiveTermbase(selectedId);
 	await refreshTermbases();
@@ -392,6 +398,7 @@ async function removeTermbase(): Promise<void> {
 		return;
 	}
 	await deleteTermbase(tb.termbaseId);
+	ztoolkit.log(`[ZCTr] 术语库已删除: ${tb.termbaseId}`);
 	if (selectedId === tb.termbaseId) {
 		setActiveTermbase(null);
 	}
@@ -511,6 +518,9 @@ async function importTermbase(): Promise<void> {
 			});
 		}
 		await saveTermbase(termbase);
+		ztoolkit.log(
+			`[ZCTr] 术语库已导入: ${termbase.termbaseId} (${lower}) entries=${termbase.entries.length}`,
+		);
 		selectedId = termbase.termbaseId;
 		setActiveTermbase(selectedId);
 		editingConceptId = null;
@@ -532,6 +542,7 @@ async function exportTermbaseTbx(): Promise<void> {
 	}
 	try {
 		await (Zotero.File as any).putContentsAsync(file, toTbx(tb));
+		ztoolkit.log(`[ZCTr] 术语库已导出 TBX: ${tb.termbaseId} → ${file}`);
 		setStatusMessage("已导出 TBX");
 	} catch (error) {
 		setStatusMessage(`导出失败: ${(error as Error).message}`);
@@ -549,6 +560,7 @@ async function exportTermbase(): Promise<void> {
 	}
 	try {
 		await (Zotero.File as any).putContentsAsync(file, toJson(tb));
+		ztoolkit.log(`[ZCTr] 术语库已导出 JSON: ${tb.termbaseId} → ${file}`);
 		setStatusMessage("已导出 JSON");
 	} catch (error) {
 		setStatusMessage(`导出失败: ${(error as Error).message}`);
@@ -620,6 +632,9 @@ function bindEvents(): void {
 		selectedId = (event.target as HTMLSelectElement).value || null;
 		editingConceptId = null;
 		setActiveTermbase(selectedId);
+		ztoolkit.log(
+			`[ZCTr] 激活术语库变更: ${selectedId ?? "(无)"}`,
+		);
 		renderMeta();
 		renderEntries();
 	});
