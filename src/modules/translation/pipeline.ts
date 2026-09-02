@@ -94,9 +94,16 @@ export async function startTranslation(
 	} else {
 		try {
 			const termbases = await listTermbases();
+			// Restrict matching to the ACTIVE termbase (manager's "（激活）"
+			// selection) so unrelated glossaries cannot pollute scientific
+			// translations; unset -> all compatible termbases.
+			const activeTermbaseId = ((getPref(PREFS.ACTIVE_TERMBASE_ID) as string) ||
+				null) as string | null;
 			terminology =
 				termbases.length > 0
-					? matchForTranslation(termbases, context, targetLang)
+					? matchForTranslation(termbases, context, targetLang, {
+							activeTermbaseId,
+						})
 					: null;
 		} catch (error) {
 			zlog.warn("Terminology matching failed, skipping:", error);

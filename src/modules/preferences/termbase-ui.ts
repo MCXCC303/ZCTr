@@ -37,6 +37,10 @@ let selectedId: string | null = null;
 /** Concept being edited in the form (null = "add new entry" mode). */
 let editingConceptId: string | null = null;
 
+/** Max rendered rows in the entry list (large termbases: DOM rebuilds of tens
+ * of thousands of nodes freeze the pane; search narrows the visible set). */
+const ENTRY_RENDER_LIMIT = 200;
+
 export async function registerTermbaseScripts(window: Window): Promise<void> {
 	win = window;
 	doc = window.document;
@@ -157,7 +161,11 @@ function renderEntries(): void {
 		})
 		.sort((a, b) => a.conceptId.localeCompare(b.conceptId));
 
-	for (const entry of entries) {
+	// Cap the rendered rows: building tens of thousands of DOM nodes on every
+	// interaction freezes the pane for seconds with large termbases. Search
+	// narrows the visible set; the hint explains the cap.
+	const visible = entries.slice(0, ENTRY_RENDER_LIMIT);
+	for (const entry of visible) {
 		const source = primaryTerm(entry, tb.sourceLanguage);
 		const target = primaryTerm(entry, tb.targetLanguage);
 		const row = doc!.createElementNS(XHTML_NS, "div") as HTMLDivElement;
@@ -175,9 +183,23 @@ function renderEntries(): void {
 		row.addEventListener("click", () => {
 			editingConceptId = entry.conceptId;
 			loadEntryForm(tb, entry);
-			renderEntries();
+			// In-place active swap - do NOT re-render the whole list (that is
+			// what froze the pane with large termbases).
+			container
+				.querySelectorAll<HTMLElement>(".zctr-termbase-entry.is-active")
+				.forEach((el: HTMLElement) => el.classList.remove("is-active"));
+			row.classList.add("is-active");
 		});
 		container.append(row);
+	}
+	if (entries.length > ENTRY_RENDER_LIMIT) {
+		container.append(
+			hEl(
+				"div",
+				`共 ${entries.length} 条匹配，仅显示前 ${ENTRY_RENDER_LIMIT} 条，请用上方搜索框过滤`,
+				"color: var(--zctr-text-secondary); font-size: small; padding: 4px;",
+			),
+		);
 	}
 	if (!entries.length) {
 		container.append(

@@ -89,6 +89,11 @@ export interface MatchedTerm {
 	status: TermStatus;
 	scopeType: ScopeRef["type"];
 	scopeId: string;
+	/** Match span in the (space-folded) input keys; used for cross-termbase
+	 * overlap suppression. Deliberately EXCLUDED from the cache fingerprint
+	 * (it is derived data, not a semantic input). */
+	start?: number;
+	end?: number;
 }
 
 /** Final, resolved set of terms for one request (ready for injection). */

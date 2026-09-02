@@ -42,19 +42,28 @@ export function buildMatchInput(
 /**
  * Match all effective termbases against the context. Deterministic, local,
  * zero network. Returns null when no termbase applies or nothing matched.
+ *
+ * When `opts.activeTermbaseId` is set, the match pool is restricted to that
+ * termbase (the manager's "（激活）" selection): translations use exactly the
+ * glossary the user picked, and unrelated glossaries (e.g. a desktop-UI
+ * terminology collection) cannot pollute scientific translations or the cache
+ * key. Unset -> all target-language-compatible termbases (backward compat).
  */
 export function matchForTranslation(
 	termbases: Termbase[],
 	ctx: TranslationContext,
 	targetLanguage: string,
-	opts: {maxTerms?: number} = {},
+	opts: {maxTerms?: number; activeTermbaseId?: string | null} = {},
 ): MatchedTermSet | null {
 	const effective = effectiveTermbases(termbases, {targetLanguage});
-	if (!effective.length) {
+	const pool = opts.activeTermbaseId
+		? effective.filter((tb) => tb.termbaseId === opts.activeTermbaseId)
+		: effective;
+	if (!pool.length) {
 		return null;
 	}
 	const input = buildMatchInput(ctx, targetLanguage);
-	const sets = effective.map((tb) =>
+	const sets = pool.map((tb) =>
 		resolveConflicts(matchTermbase(tb, input), tb.termbaseId, {
 			maxTerms: opts.maxTerms ?? DEFAULT_MAX_MATCHED_TERMS,
 		}),

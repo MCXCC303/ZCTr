@@ -108,6 +108,8 @@ export function resolveConflicts(
 		status: occ.sourceTerm.status,
 		scopeType: SCOPE_TYPE,
 		scopeId: termbaseId,
+		start: occ.start,
+		end: occ.end,
 	}));
 
 	return {
@@ -117,18 +119,61 @@ export function resolveConflicts(
 	};
 }
 
-/** Merge sets from multiple termbases, re-capping at maxTerms. */
+/**
+ * Merge sets from multiple termbases. CROSS-TERMBASE overlap suppression
+ * (longest match wins, ties by status / scope / concept): a compound match
+ * ("single cell") shadows contained one-word matches from ANY termbase so the
+ * model never receives contradictory constraints for the same span. Then
+ * dedupe per concept and re-cap at maxTerms (priority: forbidden > preferred
+ * > admitted > deprecated). Spans come from the space-folded match keys.
+ */
 export function mergeMatchedSets(
 	sets: MatchedTermSet[],
 	opts: {maxTerms?: number} = {},
 ): MatchedTermSet {
 	const maxTerms = opts.maxTerms ?? DEFAULT_MAX_MATCHED_TERMS;
-	const order: TermStatus[] = ["forbidden", "preferred", "admitted", "deprecated"];
 	const all = sets.flatMap((s) => s.matched);
+
+	// Overlap suppression: greedy longest-first on spans (only when spans are
+	// available; legacy records without spans fall through untouched).
+	const withSpan = all.filter((m) => typeof m.start === "number" && typeof m.end === "number");
+	const withoutSpan = all.filter((m) => !(typeof m.start === "number" && typeof m.end === "number"));
+	const ranked = withSpan
+		.slice()
+		.sort((a, b) => {
+			const lenA = (a.end ?? 0) - (a.start ?? 0);
+			const lenB = (b.end ?? 0) - (b.start ?? 0);
+			if (lenA !== lenB) {
+				return lenB - lenA;
+			}
+			const statusDiff =
+				STATUS_RANK[b.status] - STATUS_RANK[a.status];
+			if (statusDiff !== 0) {
+				return statusDiff;
+			}
+			if (a.scopeId !== b.scopeId) {
+				return a.scopeId.localeCompare(b.scopeId);
+			}
+			return a.conceptId.localeCompare(b.conceptId);
+		});
+	const winners: MatchedTerm[] = [];
+	for (const m of ranked) {
+		const overlaps = winners.some(
+			(w) =>
+				(m.start ?? 0) < (w.end ?? 0) &&
+				(w.start ?? 0) < (m.end ?? 0) &&
+				m.conceptId !== w.conceptId,
+		);
+		if (!overlaps) {
+			winners.push(m);
+		}
+	}
+
+	const order: TermStatus[] = ["forbidden", "preferred", "admitted", "deprecated"];
 	const seen = new Set<string>();
 	const deduped: MatchedTerm[] = [];
 	for (const status of order) {
-		for (const m of all) {
+		for (const m of [...winners, ...withoutSpan]) {
 			if (m.status !== status) {
 				continue;
 			}
@@ -147,7 +192,9 @@ export function mergeMatchedSets(
 		}
 	}
 	return {
-		termbaseIds: [...new Set(sets.flatMap((s) => s.termbaseIds))].sort(),
+		// Termbasas that actually contributed to the final set (not the input
+		// sets) - the cache fingerprint must reflect what is injected.
+		termbaseIds: [...new Set(deduped.map((m) => m.scopeId))].sort(),
 		schemaVersion: 1,
 		matched: deduped,
 	};
