@@ -11,6 +11,7 @@
 import type {ProviderConfig} from "./types";
 import {buildProviderPayloadParams} from "./adapter";
 import type {TranslationRuntimeConfig} from "../runtime/runtime-config";
+import * as zlog from "../../utils/logger";
 
 export interface ChatMessage {
 	role: string;
@@ -52,6 +53,29 @@ function buildHeaders(provider: ProviderConfig): Record<string, string> {
  * `stop` sequences are forwarded to the provider when given (used as a hard
  * stop at the target's closing marker - see translation/prompt.ts).
  */
+function debugDumpRequest(
+	provider: ProviderConfig,
+	url: string,
+	payload: Record<string, unknown>,
+	messages: ChatMessage[],
+	stop?: string[],
+): void {
+	// One log line per source line, prefixed by role, so the structure is
+	// readable at a glance in the debug console (which field leaked, which
+	// block was attached, where the target sits).
+	zlog.debug("======================== provider request ========================");
+	zlog.debug(`url=${url} model=${provider.model} type=${provider.type} stop=${JSON.stringify(stop ?? [])}`);
+	zlog.debug(`payload=${JSON.stringify(payload)}`);
+	for (const msg of messages) {
+		const role = msg.role === "user" ? "U" : "S";
+		zlog.debug(`---------- ${role} (${msg.role}) message ----------`);
+		for (const line of String(msg.content ?? "").split("\n")) {
+			zlog.debug(`${role} | ${line}`);
+		}
+	}
+	zlog.debug("====================== end provider request ======================");
+}
+
 export async function translateText(
 	provider: ProviderConfig,
 	messages: ChatMessage[],
@@ -61,13 +85,10 @@ export async function translateText(
 	const url = `${getApiBaseUrl(provider)}/chat/completions`;
 	const {payload, ignored} = buildProviderPayloadParams(provider.type, runtimeConfig);
 	if (ignored.length) {
-		ztoolkit.log(
-			`[ZCTr] Provider 不支持以下参数，已安全忽略: ${ignored.join(", ")}`,
-		);
+		zlog.warn(`Provider 不支持以下参数，已安全忽略: ${ignored.join(", ")}`);
 	}
-	Zotero.debug(
-		`[ZCTr] provider request: model=${provider.model} type=${provider.type} messages=${messages.length} target_chars=${messages[messages.length - 1]?.content?.length ?? 0}`,
-	);
+	zlog.debug(`provider request: model=${provider.model} type=${provider.type} messages=${messages.length} target_chars=${messages[messages.length - 1]?.content?.length ?? 0}`);
+	debugDumpRequest(provider, url, payload, messages, stop);
 
 	let response;
 	try {
@@ -83,7 +104,7 @@ export async function translateText(
 			timeout: 60000,
 		});
 	} catch (error) {
-		ztoolkit.log("[ZCTr] Translate request error:", error);
+		zlog.warn("Translate request error:", error);
 		throw new Error(
 			(error as Error)?.message || "Network error when calling the API",
 		);
@@ -93,7 +114,7 @@ export async function translateText(
 		const apiError =
 			response.response?.error?.message ||
 			`HTTP ${response.status}`;
-		ztoolkit.log("[ZCTr] Translate API error:", response.status, response.response);
+		zlog.warn("Translate API error:", response.status, response.response);
 		throw new Error(String(apiError));
 	}
 
@@ -123,13 +144,11 @@ export async function translateTextStreaming(
 	const url = `${getApiBaseUrl(provider)}/chat/completions`;
 	const {payload, ignored} = buildProviderPayloadParams(provider.type, runtimeConfig);
 	if (ignored.length) {
-		ztoolkit.log(
-			`[ZCTr] Provider 不支持以下参数，已安全忽略: ${ignored.join(", ")}`,
-		);
+		zlog.warn(`Provider 不支持以下参数，已安全忽略: ${ignored.join(", ")}`);
 	}
-	Zotero.debug(
-		`[ZCTr] provider request: model=${provider.model} type=${provider.type} messages=${messages.length} target_chars=${messages[messages.length - 1]?.content?.length ?? 0}`,
-	);
+	zlog.debug(`provider request: model=${provider.model} type=${provider.type} messages=${messages.length} target_chars=${messages[messages.length - 1]?.content?.length ?? 0}`);
+	// Full debugging dump (see translateText) - streaming variant.
+	debugDumpRequest(provider, url, {...payload, stream: true}, messages, stop);
 
 	let response: Response;
 	try {
@@ -145,7 +164,7 @@ export async function translateTextStreaming(
 			}),
 		});
 	} catch (error) {
-		ztoolkit.log("[ZCTr] Streaming request error:", error);
+		zlog.warn("Streaming request error:", error);
 		throw new Error(
 			(error as Error)?.message || "Network error when calling the API",
 		);
@@ -196,9 +215,7 @@ export async function translateTextStreaming(
 			}
 		}
 	}
-	Zotero.debug(
-		`[ZCTr] streaming done: ${deltaCount} deltas, ${full.length} chars`,
-	);
+	zlog.debug(`streaming done: ${deltaCount} deltas, ${full.length} chars`);
 
 	if (!full) {
 		throw new Error("Empty translation response");

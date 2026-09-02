@@ -55,6 +55,7 @@ import {
 } from "../context/context";
 import {canonicalMatchedTermSet} from "../terminology/model";
 import type {MatchedTermSet} from "../terminology/model";
+import * as zlog from "../../utils/logger";
 
 export interface TranslationCacheEntry {
 	/** Deterministic cache key (sha256 of the canonical request material),
@@ -149,7 +150,11 @@ class TranslationCache {
 				}
 			: null;
 		const material = {
-			v: 2, // cache key schema version
+			// v3: local-context extraction self-consistency + fingerprint
+			// whitespace normalization (selection/highlight unification).
+			// Bumped once so stale entries generated under the leaky context
+			// (v2) are never served again.
+			v: 3, // cache key schema version
 			sourceText: text.normalize("NFC"),
 			targetLang,
 			providerId,
@@ -275,12 +280,9 @@ class TranslationCache {
 				}
 			}
 			this.trim(itemID);
-			Zotero.debug(
-				`[ZCTr] translation cache loaded for item ${itemID}: ${queue.size} entries`,
-			);
+			zlog.debug(`translation cache loaded for item ${itemID}: ${queue.size} entries`);
 		} catch (error) {
-			ztoolkit.log(
-				`[ZCTr] Failed to load translation cache for item ${itemID}:`,
+			zlog.warn(`Failed to load translation cache for item ${itemID}:`,
 				error,
 			);
 		}
@@ -311,8 +313,7 @@ class TranslationCache {
 				await Zotero.File.putContentsAsync(file, JSON.stringify(toSave));
 			})
 			.catch((error) => {
-				ztoolkit.log(
-					`[ZCTr] Failed to save translation cache for item ${itemID}:`,
+				zlog.warn(`Failed to save translation cache for item ${itemID}:`,
 					error,
 				);
 			});
@@ -356,17 +357,13 @@ class TranslationCache {
 		const key = this.key(text, targetLang, providerId, runtimeConfig, context, terminology);
 		const entry = queue.get(key);
 		if (!entry) {
-			Zotero.debug(
-				`[ZCTr] cache miss: item=${itemID} text_len=${text.length} lang=${targetLang} provider=${providerId} key=${key.slice(0, 12)}`,
-			);
+			zlog.debug(`cache miss: item=${itemID} text_len=${text.length} lang=${targetLang} provider=${providerId} key=${key.slice(0, 12)}`);
 			return null;
 		}
 		// Refresh recency: Map iteration order follows insertion order
 		queue.delete(key);
 		queue.set(key, entry);
-		Zotero.debug(
-			`[ZCTr] cache hit: item=${itemID} text_len=${text.length} lang=${targetLang} provider=${providerId} key=${key.slice(0, 12)}`,
-		);
+		zlog.debug(`cache hit: item=${itemID} text_len=${text.length} lang=${targetLang} provider=${providerId} key=${key.slice(0, 12)}`);
 		return entry.translation;
 	}
 
@@ -397,9 +394,7 @@ class TranslationCache {
 			runtime: canonicalRuntimeConfig(runtimeConfig),
 			translation,
 		});
-		Zotero.debug(
-			`[ZCTr] cache put: item=${itemID} text_len=${text.length} lang=${targetLang} provider=${providerId} key=${key.slice(0, 12)}`,
-		);
+		zlog.debug(`cache put: item=${itemID} text_len=${text.length} lang=${targetLang} provider=${providerId} key=${key.slice(0, 12)}`);
 		this.trim(itemID);
 		if (this.shouldPersist()) {
 			// Fire-and-forget; save() logs its own failures

@@ -16,6 +16,7 @@ export type {
 	ReaderLike,
 	ViewLike,
 } from "../../types/reader";
+import * as zlog from "../../utils/logger";
 import type {
 	ContextMenuEvent,
 	ReaderEntry,
@@ -85,7 +86,7 @@ export function getSelectedText(view: ViewLike | undefined): string {
 				return native;
 			}
 		} catch (error) {
-			ztoolkit.log("[ZCTr] Failed to read selection:", error);
+			zlog.warn("Failed to read selection:", error);
 		}
 	}
 	try {
@@ -101,7 +102,7 @@ export function getSelectedText(view: ViewLike | undefined): string {
 			}
 		}
 	} catch (error) {
-		ztoolkit.log("[ZCTr] Failed to read logical selection:", error);
+		zlog.warn("Failed to read logical selection:", error);
 	}
 	return "";
 }
@@ -120,7 +121,7 @@ export function registerReaderListener(
 	handler: (event: ContextMenuEvent) => void,
 ): void {
 	if (!Zotero.Reader?.registerEventListener) {
-		ztoolkit.log("[ZCTr] Zotero.Reader.registerEventListener unavailable");
+		zlog.info("Zotero.Reader.registerEventListener unavailable");
 		return;
 	}
 	const listeners = (Zotero.Reader as any)._registeredListeners ?? [];

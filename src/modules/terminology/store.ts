@@ -31,6 +31,7 @@ import {
 } from "./model";
 import {parseTermbaseJson} from "./io";
 import {getTermbaseSubdirName} from "../../utils/build-info";
+import * as zlog from "../../utils/logger";
 
 const DIR_NAME = "zctr";
 
@@ -64,8 +65,7 @@ function getTermbaseDir(): any | null {
 		}
 		return sub;
 	} catch (error) {
-		ztoolkit.log(
-			`[ZCTr] Failed to access termbase directory (${Zotero.DataDirectory.dir}):`,
+		zlog.warn(`Failed to access termbase directory (${Zotero.DataDirectory.dir}):`,
 			(error as Error)?.name,
 			(error as Error)?.message,
 			error,
@@ -97,7 +97,7 @@ function hasJsonEntries(dir: any): boolean {
 			}
 		}
 	} catch (error) {
-		ztoolkit.log("[ZCTr] 术语库目录检查失败:", error);
+		zlog.warn("术语库目录检查失败:", error);
 	}
 	return false;
 }
@@ -144,15 +144,13 @@ async function migrateLegacyTermbases(): Promise<void> {
 				await (Zotero.File as any).putContentsAsync(target, content);
 				file.remove(false);
 				knownIds.add(name.slice(0, -".json".length));
-				ztoolkit.log(
-					`[ZCTr] 术语库已从旧目录迁移到 ${dir.path}: ${name}`,
-				);
+				zlog.info(`术语库已从旧目录迁移到 ${dir.path}: ${name}`);
 			} catch (error) {
-				ztoolkit.log(`[ZCTr] 术语库迁移失败 (${name}):`, error);
+				zlog.warn(`术语库迁移失败 (${name}):`, error);
 			}
 		}
 	} catch (error) {
-		ztoolkit.log("[ZCTr] 术语库迁移扫描失败:", error);
+		zlog.warn("术语库迁移扫描失败:", error);
 	}
 }
 
@@ -174,8 +172,7 @@ export async function listTermbaseIds(): Promise<string[]> {
 				}
 			}
 		} catch (error) {
-			ztoolkit.log(
-				`[ZCTr] Failed to enumerate termbase directory (${dir.path}):`,
+			zlog.warn(`Failed to enumerate termbase directory (${dir.path}):`,
 				(error as Error)?.name,
 				(error as Error)?.message,
 				error,
@@ -198,13 +195,11 @@ export async function loadTermbase(
 		const termbase = parseTermbaseJson(content);
 		const issues = validateTermbase(termbase);
 		if (issues.length) {
-			ztoolkit.log(
-				`[ZCTr] Termbase ${termbaseId} 校验失败，已忽略问题词条: ${issues.slice(0, 3).join("; ")}`,
-			);
+			zlog.warn(`Termbase ${termbaseId} 校验失败，已忽略问题词条: ${issues.slice(0, 3).join("; ")}`);
 		}
 		return termbase;
 	} catch (error) {
-		ztoolkit.log(`[ZCTr] Failed to load termbase ${termbaseId}:`, error);
+		zlog.warn(`Failed to load termbase ${termbaseId}:`, error);
 		return null;
 	}
 }
@@ -223,10 +218,19 @@ export async function listTermbases(): Promise<Termbase[]> {
 		}
 	}
 	termbaseCache = termbases;
-	Zotero.debug(
-		`[ZCTr] termbases loaded: ${termbases.length} (${ids.join(", ") || "none"})`,
-	);
+	zlog.debug(`termbases loaded: ${termbases.length} (${ids.join(", ") || "none"})`);
 	return termbaseCache;
+}
+
+/**
+ * Force a re-read from disk: invalidates the session cache and reloads.
+ * Used by the settings "刷新" button so externally added/modified termbase
+ * files (e.g. copied between build directories) appear without reopening the
+ * pane. Subsequent translation requests also see the fresh list.
+ */
+export async function reloadTermbases(): Promise<Termbase[]> {
+	invalidateCache();
+	return listTermbases();
 }
 
 /** Persist a termbase (creates or overwrites `<termbaseId>.json`). */
@@ -248,7 +252,7 @@ export async function saveTermbase(termbase: Termbase): Promise<void> {
 		knownIds.add(termbase.termbaseId);
 		invalidateCache();
 	} catch (error) {
-		ztoolkit.log(`[ZCTr] Failed to save termbase ${termbase.termbaseId}:`, error);
+		zlog.warn(`Failed to save termbase ${termbase.termbaseId}:`, error);
 		throw error;
 	}
 }
@@ -266,7 +270,7 @@ export async function deleteTermbase(termbaseId: string): Promise<void> {
 		knownIds.delete(termbaseId);
 		invalidateCache();
 	} catch (error) {
-		ztoolkit.log(`[ZCTr] Failed to delete termbase ${termbaseId}:`, error);
+		zlog.warn(`Failed to delete termbase ${termbaseId}:`, error);
 	}
 }
 

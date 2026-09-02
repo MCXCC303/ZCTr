@@ -23,6 +23,7 @@ import {
 import {closePopup, openTranslatePopup} from "./translate-popup";
 import {getPref, PREFS} from "../../utils/prefs";
 import {matchesShortcut, parseShortcut} from "../../utils/shortcut";
+import * as zlog from "../../utils/logger";
 
 /** Main windows that already have a keydown listener attached. */
 const hotkeyWindows = new Set<Window>();
@@ -117,7 +118,7 @@ function handleWindowKeyDown(event: KeyboardEvent): void {
 		if (!text) {
 			return;
 		}
-		Zotero.debug(`[ZCTr] hotkey: translating selection (${text.length} chars)`);
+		zlog.debug(`hotkey: translating selection (${text.length} chars)`);
 
 		// Consume the shortcut so the reader's own key handling (e.g. find
 		// popup shortcuts) does not also react
@@ -131,7 +132,7 @@ function handleWindowKeyDown(event: KeyboardEvent): void {
 			undefined,
 		);
 	} catch (error) {
-		Zotero.debug(`[ZCTr] hotkey handler error: ${error}`);
+		zlog.debug(`hotkey handler error: ${error}`);
 	}
 }
 
@@ -178,7 +179,7 @@ export function registerHotkey(): void {
 	for (const win of Zotero.getMainWindows()) {
 		registerWindowHotkey(win);
 	}
-	ztoolkit.log("[ZCTr] Translate hotkey registered");
+	zlog.info("Translate hotkey registered");
 }
 
 export function unregisterHotkey(): void {

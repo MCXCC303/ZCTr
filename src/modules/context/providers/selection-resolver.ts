@@ -10,6 +10,7 @@
  */
 
 import type {ViewLike} from "../../../types/reader";
+import * as zlog from "../../../utils/logger";
 
 export interface SelectionOffsetRange {
 	pageIndex: number;
@@ -50,7 +51,7 @@ export function getSelectionRanges(view: ViewLike | undefined): SelectionOffsetR
 		}
 		return out;
 	} catch (error) {
-		ztoolkit.log("[ZCTr] Failed to read selection ranges:", error);
+		zlog.warn("Failed to read selection ranges:", error);
 		return [];
 	}
 }

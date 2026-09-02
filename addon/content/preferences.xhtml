@@ -96,6 +96,10 @@
 		<html:h3>术语表</html:h3>
 	</label>
 	<groupbox class="zctr-settings-group">
+		<hbox align="center" class="zctr-setting-row">
+			<html:input id="zctr-input-termbase-enabled" type="checkbox" />
+			<label flex="1">启用术语库（术语匹配与注入）</label>
+		</hbox>
 		<hbox align="stretch">
 			<!-- 左栏：术语库管理 -->
 			<vbox class="zctr-termbase-list-pane">
@@ -105,6 +109,7 @@
 				<button id="zctr-termbase-new" label="新建" />
 				<button id="zctr-termbase-delete" label="删除" />
 				<button id="zctr-termbase-import" label="导入" />
+				<button id="zctr-termbase-refresh" label="刷新" />
 				<button id="zctr-termbase-export" label="导出JSON" />
 				<button id="zctr-termbase-export-tbx" label="导出TBX" />
 				<spacer flex="1" />
@@ -276,6 +281,11 @@
 		</hbox>
 
 		<label class="zctr-description">上下文仅用于消除指代与术语歧义，不参与译文输出</label>
+
+		<hbox align="center" class="zctr-setting-row">
+			<html:input id="zctr-input-context-terminology" type="checkbox" />
+			<label flex="1">包含术语</label>
+		</hbox>
 	</groupbox>
 
 
@@ -301,5 +311,22 @@
 		</hbox>
 
 		<label class="zctr-description">-1 表示不限制长度（缓存不断累积可能导致运行缓慢）</label>
+	</groupbox>
+
+	<!-- 日志 -->
+	<label class="zctr-section-title">
+		<html:h2>日志</html:h2>
+	</label>
+
+	<groupbox class="zctr-settings-group">
+		<hbox align="center" class="zctr-setting-row">
+			<label flex="1">日志级别</label>
+			<html:select id="zctr-input-log-level" class="zctr-input-select">
+				<html:option value="error">Error</html:option>
+				<html:option value="warn">Warn</html:option>
+				<html:option value="info">Info</html:option>
+				<html:option value="debug">Debug</html:option>
+			</html:select>
+		</hbox>
 	</groupbox>
 </groupbox>

@@ -32,6 +32,7 @@ import {buildTranslationRequest, type TranslationRequest} from "./request";
 import {listTermbases} from "../terminology/store";
 import {matchForTranslation} from "../terminology/context-aware";
 import type {MatchedTermSet} from "../terminology/model";
+import * as zlog from "../../utils/logger";
 
 export interface TranslationHandle {
 	/** True when the result came from the local cache (no provider request). */
@@ -62,9 +63,7 @@ export async function startTranslation(
 	}
 	const targetLang = (getPref(PREFS.TARGET_LANG) as string) || "zh";
 	const runtimeConfig = getRuntimeConfig();
-	Zotero.debug(
-		`[ZCTr] translation request: item=${entry.itemID} text_len=${text.length} target=${targetLang} provider=${provider.id} stream=${runtimeConfig.stream}`,
-	);
+	zlog.debug(`translation request: item=${entry.itemID} text_len=${text.length} target=${targetLang} provider=${provider.id} stream=${runtimeConfig.stream}`);
 
 	let context: TranslationContext;
 	try {
@@ -75,31 +74,36 @@ export async function startTranslation(
 			getContextOptionsFromPrefs(),
 		);
 	} catch (error) {
-		ztoolkit.log("[ZCTr] Context assembly failed, degrading to selection-only:", error);
+		zlog.warn("Context assembly failed, degrading to selection-only:", error);
 		context = selectionOnlyContext(text);
 	}
 	if (context.document || context.local) {
-		Zotero.debug(
-			`[ZCTr] context attached: level=${context.policy.level} doc=${!!context.document} local=${!!context.local}`,
-		);
+		zlog.debug(`context attached: level=${context.policy.level} doc=${!!context.document} local=${!!context.local}`);
 	}
 
 	// Terminology matching (Phase 2): local, deterministic, zero network.
 	// Any failure degrades to no terminology - never blocks translation.
+	// Gated by two prefs: the termbase master switch and "包含术语"
+	// (independent of the context level).
+	const terminologyOn =
+		getPref(PREFS.TERMINOLOGY_ENABLED) !== false &&
+		getPref(PREFS.CONTEXT_INCLUDE_TERMINOLOGY) !== false;
 	let terminology: MatchedTermSet | null = null;
-	try {
-		const termbases = await listTermbases();
-		terminology =
-			termbases.length > 0
-				? matchForTranslation(termbases, context, targetLang)
-				: null;
-	} catch (error) {
-		ztoolkit.log("[ZCTr] Terminology matching failed, skipping:", error);
+	if (!terminologyOn) {
+		zlog.debug("terminology injection disabled by prefs");
+	} else {
+		try {
+			const termbases = await listTermbases();
+			terminology =
+				termbases.length > 0
+					? matchForTranslation(termbases, context, targetLang)
+					: null;
+		} catch (error) {
+			zlog.warn("Terminology matching failed, skipping:", error);
+		}
 	}
 	if (terminology) {
-		Zotero.debug(
-			`[ZCTr] terminology matched: ${terminology.matched.length} terms in ${terminology.termbaseIds.join(",")}`,
-		);
+		zlog.debug(`terminology matched: ${terminology.matched.length} terms in ${terminology.termbaseIds.join(",")}`);
 	}
 
 	const request: TranslationRequest = buildTranslationRequest(

@@ -7,6 +7,14 @@
  * effective termbases (by target language) -> match -> resolve -> merge.
  * Returns null when nothing matched or no termbase applies - the caller then
  * skips injection entirely (no block, no constraint, no cache material).
+ *
+ * MATCH SCOPE = the translation TARGET ONLY (`selectedText`). Injected term
+ * constraints must cover the text being translated; terms that occur only in
+ * the document summary / abstract / title (or the reference-only local
+ * context) do not apply to the marked target - they would pollute the
+ * request AND the cache fingerprint (the matched set changes with every
+ * policy/layout variation while the actual translation target stays the
+ * same).
  */
 
 import type {TranslationContext} from "../context/context";
@@ -25,17 +33,8 @@ export function buildMatchInput(
 	ctx: TranslationContext,
 	targetLanguage: string,
 ): TerminologyMatchInput {
-	const localParts = [
-		ctx.local?.previousParagraph,
-		ctx.local?.currentParagraph,
-		ctx.local?.nextParagraph,
-		ctx.local?.containingSentence,
-	].filter((s): s is string => !!s);
 	return {
 		selectedText: ctx.selectedText,
-		localContext: localParts.length ? localParts.join("\n") : undefined,
-		documentTitle: ctx.document?.title,
-		abstract: ctx.document?.abstract,
 		targetLanguage,
 	};
 }

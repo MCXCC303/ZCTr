@@ -11,6 +11,7 @@
  */
 
 import type {ViewLike} from "../../../types/reader";
+import * as zlog from "../../../utils/logger";
 
 interface OutlineNode {
 	title?: string;
@@ -74,7 +75,7 @@ export async function getSectionTitle(
 		}
 		return findDeepestOutlineTitle(outline, pageIndex);
 	} catch (error) {
-		ztoolkit.log("[ZCTr] Failed to resolve section title:", error);
+		zlog.warn("Failed to resolve section title:", error);
 		return undefined;
 	}
 }

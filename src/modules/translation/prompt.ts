@@ -39,7 +39,7 @@ export interface ChatMessage {
  * translation format rules, context label semantics, terminology injection
  * syntax. The prompt version participates in the translation cache key.
  */
-export const TRANSLATION_PROMPT_VERSION = 3;
+export const TRANSLATION_PROMPT_VERSION = 4;
 
 /** Default target markers (XML-style; strong boundary for most models). */
 const DEFAULT_OPEN = "<target>";
@@ -129,15 +129,17 @@ function buildSystemMessage(targetLang: string): string {
 
 /**
  * Build the chat messages. The translation target is always wrapped in
- * explicit markers; with attached context the user message starts with the
- * [DOCUMENT] / [LOCAL CONTEXT] blocks (stable prefix for provider-side
- * caching), followed by the optional [TERMINOLOGY] block (matched terms),
- * the anti-leak instruction and the marked target.
+ * explicit markers. v4 structures the user message as
+ *   instruction -> <target>…</target>  ->  reference blocks AFTER the target
+ * so the context (and any terminology material) is POST-target reference:
+ * the model's generation ends at the closing marker (hard stop), so it
+ * cannot translate/summarize the surrounding material - small translation
+ * models habitually translated a containing sentence sitting before the
+ * target. Reference blocks follow with an explicit label.
  *
  * When `terminology` carries matched terms, the constraint sentence is
- * appended to the instruction (adjacent to <target>) and the block sits
- * between [LOCAL CONTEXT] and <target> - reference material only, never a
- * translation target (P2 plan §3.3, §6).
+ * appended to the instruction (adjacent to <target>); the block itself is
+ * post-target reference material (P2 plan §3.3, §6).
  */
 export function buildMessages(
 	text: string,
@@ -151,7 +153,10 @@ export function buildMessages(
 	const constraint = termBlock ? ` ${terminologyConstraint()}` : "";
 	const instruction = `Translate ONLY the text between ${open} and ${close} below; output nothing else.${constraint}`;
 	const target = `${open}\n${text}\n${close}`;
-	const userContent = [blocks, termBlock, instruction, target]
+	const reference = [blocks, termBlock]
+		.filter((part) => !!part)
+		.join("\n\n");
+	const userContent = [instruction, target, reference]
 		.filter((part) => !!part)
 		.join("\n\n");
 	return [

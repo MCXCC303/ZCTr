@@ -17,6 +17,7 @@ import {
 	type ContextMenuEvent,
 } from "./common";
 import {openTranslatePopup} from "./translate-popup";
+import * as zlog from "../../utils/logger";
 
 function handleAnnotationContextMenu(event: ContextMenuEvent): void {
 	const reader = event.reader;
@@ -45,7 +46,7 @@ function handleAnnotationContextMenu(event: ContextMenuEvent): void {
 
 export function registerAnnotationMenu(): void {
 	registerReaderListener("createAnnotationContextMenu", handleAnnotationContextMenu);
-	ztoolkit.log("[ZCTr] Annotation context menu entry registered");
+	zlog.info("Annotation context menu entry registered");
 }
 
 export function unregisterAnnotationMenu(): void {

@@ -9,9 +9,10 @@ import {
 } from "./modules/reader/hotkey";
 import {closePopup} from "./modules/reader/translate-popup";
 import {registerPrefsScripts} from "./modules/preferences/prefs-ui";
+import * as zlog from "./utils/logger";
 
 async function onStartup() {
-	Zotero.debug("[ZCTr] onStartup begin");
+	zlog.debug("onStartup begin");
 	await Promise.all([
 		Zotero.initializationPromise,
 		Zotero.unlockPromise,
@@ -30,7 +31,7 @@ async function onStartup() {
 		// the content/ directory - a bare "preferences.css" would 404.
 		stylesheets: [rootURI + "content/preferences.css"],
 	});
-	Zotero.debug("[ZCTr] PreferencePanes registered");
+	zlog.debug("PreferencePanes registered");
 
 	// Register reader context menu entries (global, not per window)
 	registerViewMenu();
@@ -80,7 +81,7 @@ async function onPrefsEvent(
 	type: string,
 	data: { [key: string]: unknown },
 ): Promise<void> {
-	Zotero.debug(`[ZCTr] onPrefsEvent: ${type}`);
+	zlog.debug(`onPrefsEvent: ${type}`);
 	try {
 		switch (type) {
 			case "load":

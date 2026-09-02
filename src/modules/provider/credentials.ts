@@ -1,3 +1,4 @@
+import * as zlog from "../../utils/logger";
 /**
  * Provider credentials - API key storage in the Firefox login manager
  * (NSS-encrypted), keyed by provider id. Keys never enter the providers pref,
@@ -37,7 +38,7 @@ export async function setProviderApiKey(
 			}
 		}
 	} catch (error) {
-		ztoolkit.log("[ZCTr] Failed to remove old API key:", describeError(error));
+		zlog.warn("Failed to remove old API key:", describeError(error));
 	}
 
 	if (!apiKey) {
@@ -62,8 +63,7 @@ export async function setProviderApiKey(
 	try {
 		await (Services.logins as any).addLoginAsync(login);
 	} catch (error) {
-		ztoolkit.log(
-			"[ZCTr] addLoginAsync failed:",
+		zlog.warn("addLoginAsync failed:",
 			describeError(error),
 		);
 	}
@@ -79,7 +79,7 @@ export function getProviderApiKey(providerId: string): string {
 			}
 		}
 	} catch (error) {
-		ztoolkit.log("[ZCTr] Failed to read API key:", error);
+		zlog.warn("Failed to read API key:", error);
 	}
 	return "";
 }

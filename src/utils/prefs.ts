@@ -34,6 +34,12 @@ export const PREFS = {
 	CONTEXT_INCLUDE_SECTION_TITLE: "contextIncludeSectionTitle",
 	/** Include previous/next paragraphs around the selection. */
 	CONTEXT_INCLUDE_ADJACENT_PARAGRAPHS: "contextIncludeAdjacentParagraphs",
+	/** Include matched terminology (independent of the context level). */
+	CONTEXT_INCLUDE_TERMINOLOGY: "contextIncludeTerminology",
+	/** Master switch for termbase matching/injection. */
+	TERMINOLOGY_ENABLED: "terminologyEnabled",
+	/** Log level: error | warn | info | debug. */
+	LOG_LEVEL: "logLevel",
 	/** Active (persisted) termbase id for the termbase manager UI. */
 	ACTIVE_TERMBASE_ID: "activeTermbaseId",
 	/** Whether the translation cache is persisted across sessions. */

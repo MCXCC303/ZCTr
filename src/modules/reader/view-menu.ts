@@ -16,6 +16,7 @@ import {
 	type ContextMenuEvent,
 } from "./common";
 import {openTranslatePopup} from "./translate-popup";
+import * as zlog from "../../utils/logger";
 
 function handleViewContextMenu(event: ContextMenuEvent): void {
 	const context = getReaderContext(event.reader);
@@ -46,7 +47,7 @@ function handleViewContextMenu(event: ContextMenuEvent): void {
 
 export function registerViewMenu(): void {
 	registerReaderListener("createViewContextMenu", handleViewContextMenu);
-	ztoolkit.log("[ZCTr] View context menu entry registered");
+	zlog.info("View context menu entry registered");
 }
 
 export function unregisterViewMenu(): void {

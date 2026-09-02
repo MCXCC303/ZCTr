@@ -12,6 +12,7 @@
  */
 
 import {getPref, PREFS} from "../../utils/prefs";
+import * as zlog from "../../utils/logger";
 
 export interface TranslationRuntimeConfig {
 	/** Sampling temperature. Always sent (default 0 = deterministic). */
@@ -121,8 +122,7 @@ export function getRuntimeConfig(): TranslationRuntimeConfig {
 		// Illegal configuration should be prevented by the settings UI; if it
 		// nevertheless reaches this point, log and continue (never fail a
 		// translation request because of a sampling parameter).
-		ztoolkit.log(
-			"[ZCTr] runtime config validation issues:",
+		zlog.info("runtime config validation issues:",
 			issues.map((i) => i.message).join("; "),
 		);
 	}

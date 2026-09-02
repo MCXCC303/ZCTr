@@ -10,6 +10,7 @@
  */
 
 import type {AbstractSource, AbstractState} from "../context";
+import * as zlog from "../../../utils/logger";
 
 export interface DocumentMetadata {
 	/** Parent (e.g. journal article) item id. */
@@ -37,7 +38,7 @@ export function getDocumentMetadata(itemID?: number): Promise<DocumentMetadata |
 	if (!pending) {
 		pending = resolveMetadata(itemID)
 			.catch((error) => {
-				ztoolkit.log("[ZCTr] Failed to load document metadata:", error);
+				zlog.warn("Failed to load document metadata:", error);
 				return null;
 			})
 			.finally(() => {

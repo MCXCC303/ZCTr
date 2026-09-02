@@ -21,6 +21,11 @@ pref("contextIncludeAbstract", true);
 pref("contextIncludeTitle", true);
 pref("contextIncludeSectionTitle", true);
 pref("contextIncludeAdjacentParagraphs", false);
+// 术语：是否启用匹配/注入；"包含术语"独立于上下文级别
+pref("terminologyEnabled", true);
+pref("contextIncludeTerminology", true);
+// 日志级别：error < warn < info < debug
+pref("logLevel", "info");
 // 术语表：当前激活的术语库 id（编辑器选择持久化，重启后恢复）
 pref("activeTermbaseId", "");
 // 持久化翻译缓存（写入 Zotero 数据目录，重启后保留）

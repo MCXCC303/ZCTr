@@ -31,6 +31,7 @@ import {getSelectionRanges} from "./providers/selection-resolver";
 import {getLocalContextFromView} from "./providers/local-context-provider";
 import {getDocumentMetadata} from "./providers/metadata-provider";
 import {getSectionTitle} from "./providers/section-title-provider";
+import * as zlog from "../../utils/logger";
 
 export interface ContextOptions {
 	level: ContextLevel;
@@ -98,15 +99,21 @@ export async function assembleContext(
 	}
 
 	const ranges = getSelectionRanges(view);
-	if (!ranges.length) {
-		return ctx;
-	}
+	// NOTE: ranges may be empty (Zotero 10 beta clears the reader's logical
+	// selection in the highlight/annotation flow); getLocalContextFromView
+	// then locates the selected text in the page chars, so the assembled
+	// context stays deterministic across reader states (same cache key).
 
 	// L1 - local context (sentence / paragraph / neighbors)
-	const local = getLocalContextFromView(view, ranges, {
-		includeAdjacentParagraphs: opts.includeAdjacentParagraphs,
-		maxChars: DEFAULT_CONTEXT_BUDGET.localContextMaxChars,
-	});
+	const local = getLocalContextFromView(
+		view,
+		ranges,
+		{
+			includeAdjacentParagraphs: opts.includeAdjacentParagraphs,
+			maxChars: DEFAULT_CONTEXT_BUDGET.localContextMaxChars,
+		},
+		selectedText,
+	);
 	if (
 		local.containingSentence ||
 		local.currentParagraph ||
@@ -114,6 +121,9 @@ export async function assembleContext(
 		local.nextParagraph
 	) {
 		ctx.local = local;
+		zlog.debug(`local context: sentence=${local.containingSentence?.length ?? 0} para=${local.currentParagraph?.length ?? 0} prev=${local.previousParagraph?.length ?? 0} next=${local.nextParagraph?.length ?? 0}`);
+	} else if (!ranges.length) {
+		zlog.debug("no ranges and text not located in pages -> selection-only context");
 	}
 
 	// L2 - document-level summary (title / abstract), only for semantic and

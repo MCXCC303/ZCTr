@@ -10,7 +10,7 @@
  * - search, add / update / remove entries (model shapes + store)
  */
 
-import {listTermbases, saveTermbase, deleteTermbase} from "../terminology/store";
+import {reloadTermbases, saveTermbase, deleteTermbase} from "../terminology/store";
 import {
 	parseDelimited,
 	parseTermbaseJson,
@@ -28,6 +28,7 @@ import {
 } from "../terminology/model";
 import {getPref, PREFS, setPref} from "../../utils/prefs";
 import {hEl, XHTML_NS} from "./provider-form";
+import * as zlog from "../../utils/logger";
 
 let win: Window | null = null;
 let doc: Document | null = null;
@@ -98,7 +99,10 @@ function primaryTerm(entry: ConceptEntry, language: string): Term | undefined {
 // ---------------------------------------------------------------------------
 
 async function refreshTermbases(): Promise<void> {
-	termbases = await listTermbases();
+	// Always re-read from disk: the pane's "刷新" button must show externally
+	// added/modified termbase files, and the session listTermbases cache is
+	// replaced so subsequent translations see the same fresh list.
+	termbases = await reloadTermbases();
 	if (selectedId && !termbases.some((tb) => tb.termbaseId === selectedId)) {
 		selectedId = null;
 	}
@@ -322,9 +326,7 @@ async function persistAndRefresh(
 		setStatusMessage(`保存失败: ${(error as Error).message}`);
 		return;
 	}
-	ztoolkit.log(
-		`[ZCTr] 词条操作: ${message} termbase=${tb.termbaseId} entries=${tb.entries.length}`,
-	);
+	zlog.info(`词条操作: ${message} termbase=${tb.termbaseId} entries=${tb.entries.length}`);
 	editingConceptId = selectConceptId;
 	await refreshTermbases();
 	setStatusMessage(message);
@@ -377,9 +379,7 @@ async function createTermbase(): Promise<void> {
 		setStatusMessage(`新建失败: ${(error as Error).message}`);
 		return;
 	}
-	ztoolkit.log(
-		`[ZCTr] 术语库已新建: ${termbase.termbaseId} (${termbase.sourceLanguage}→${termbase.targetLanguage})`,
-	);
+	zlog.info(`术语库已新建: ${termbase.termbaseId} (${termbase.sourceLanguage}→${termbase.targetLanguage})`);
 	selectedId = termbase.termbaseId;
 	setActiveTermbase(selectedId);
 	await refreshTermbases();
@@ -398,7 +398,7 @@ async function removeTermbase(): Promise<void> {
 		return;
 	}
 	await deleteTermbase(tb.termbaseId);
-	ztoolkit.log(`[ZCTr] 术语库已删除: ${tb.termbaseId}`);
+	zlog.info(`术语库已删除: ${tb.termbaseId}`);
 	if (selectedId === tb.termbaseId) {
 		setActiveTermbase(null);
 	}
@@ -448,11 +448,11 @@ function pickFile(title: string, save: boolean, defaultName: string): Promise<st
 					resolve(ok ? (fp.file as string) : null);
 				})
 				.catch((error: unknown) => {
-					ztoolkit.log("[ZCTr] File picker failed:", error);
+					zlog.warn("File picker failed:", error);
 					resolve(null);
 				});
 		} catch (error) {
-			ztoolkit.log("[ZCTr] File picker init failed:", error);
+			zlog.warn("File picker init failed:", error);
 			resolve(null);
 		}
 	});
@@ -518,9 +518,7 @@ async function importTermbase(): Promise<void> {
 			});
 		}
 		await saveTermbase(termbase);
-		ztoolkit.log(
-			`[ZCTr] 术语库已导入: ${termbase.termbaseId} (${lower}) entries=${termbase.entries.length}`,
-		);
+		zlog.info(`术语库已导入: ${termbase.termbaseId} (${lower}) entries=${termbase.entries.length}`);
 		selectedId = termbase.termbaseId;
 		setActiveTermbase(selectedId);
 		editingConceptId = null;
@@ -542,7 +540,7 @@ async function exportTermbaseTbx(): Promise<void> {
 	}
 	try {
 		await (Zotero.File as any).putContentsAsync(file, toTbx(tb));
-		ztoolkit.log(`[ZCTr] 术语库已导出 TBX: ${tb.termbaseId} → ${file}`);
+		zlog.info(`术语库已导出 TBX: ${tb.termbaseId} → ${file}`);
 		setStatusMessage("已导出 TBX");
 	} catch (error) {
 		setStatusMessage(`导出失败: ${(error as Error).message}`);
@@ -560,7 +558,7 @@ async function exportTermbase(): Promise<void> {
 	}
 	try {
 		await (Zotero.File as any).putContentsAsync(file, toJson(tb));
-		ztoolkit.log(`[ZCTr] 术语库已导出 JSON: ${tb.termbaseId} → ${file}`);
+		zlog.info(`术语库已导出 JSON: ${tb.termbaseId} → ${file}`);
 		setStatusMessage("已导出 JSON");
 	} catch (error) {
 		setStatusMessage(`导出失败: ${(error as Error).message}`);
@@ -596,7 +594,7 @@ function promptText(title: string, message: string, defaultValue: string): strin
 		const ok = Services.prompt.prompt(win as any, title, message, rv, "", {value: false});
 		return ok ? rv.value.trim() : null;
 	} catch (error) {
-		ztoolkit.log(`[ZCTr] Prompt failed (${title}):`, error);
+		zlog.warn(`Prompt failed (${title}):`, error);
 		return null;
 	}
 }
@@ -606,7 +604,7 @@ function alertUser(title: string, message: string): void {
 	try {
 		Services.prompt.alert(win as any, title, message);
 	} catch (error) {
-		ztoolkit.log(`[ZCTr] Alert failed (${title}):`, error);
+		zlog.warn(`Alert failed (${title}):`, error);
 	}
 }
 
@@ -618,7 +616,7 @@ function confirmUser(message: string): boolean {
 	try {
 		return Services.prompt.confirm(win as any, "ZCTr", message);
 	} catch (error) {
-		ztoolkit.log("[ZCTr] Confirm failed:", error);
+		zlog.warn("Confirm failed:", error);
 		return false;
 	}
 }
@@ -632,15 +630,18 @@ function bindEvents(): void {
 		selectedId = (event.target as HTMLSelectElement).value || null;
 		editingConceptId = null;
 		setActiveTermbase(selectedId);
-		ztoolkit.log(
-			`[ZCTr] 激活术语库变更: ${selectedId ?? "(无)"}`,
-		);
+		zlog.info(`激活术语库变更: ${selectedId ?? "(无)"}`);
 		renderMeta();
 		renderEntries();
 	});
 	get("zctr-termbase-new")?.addEventListener("click", () => void createTermbase());
 	get("zctr-termbase-delete")?.addEventListener("click", () => void removeTermbase());
 	get("zctr-termbase-import")?.addEventListener("click", () => void importTermbase());
+	get("zctr-termbase-refresh")?.addEventListener("click", () => {
+		void refreshTermbases()
+			.then(() => setStatusMessage("已从磁盘刷新术语库"))
+			.catch((error) => setStatusMessage(`刷新失败: ${(error as Error).message}`));
+	});
 	get("zctr-termbase-export")?.addEventListener("click", () => void exportTermbase());
 	get("zctr-termbase-export-tbx")?.addEventListener("click", () => void exportTermbaseTbx());
 	get("zctr-termbase-search")?.addEventListener("input", () => renderEntries());

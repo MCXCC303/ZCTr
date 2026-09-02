@@ -35,6 +35,7 @@ import {
 	TOP_P_MIN,
 } from "../runtime/runtime-config";
 import {parseShortcut, serializeShortcut} from "../../utils/shortcut";
+import {setLogLevel} from "../../utils/logger";
 import {providerForms} from "./forms";
 import {registerTermbaseScripts} from "./termbase-ui";
 import {
@@ -47,6 +48,7 @@ import {
 	setVisible,
 	XHTML_NS,
 } from "./provider-form";
+import * as zlog from "../../utils/logger";
 
 let win: Window | null = null;
 let doc: Document | null = null;
@@ -69,7 +71,7 @@ export async function registerPrefsScripts(window: Window): Promise<void> {
 	bindButtons();
 	bindGlobalSettings();
 	void registerTermbaseScripts(window).catch((error) => {
-		ztoolkit.log("[ZCTr] Termbase UI init failed:", error);
+		zlog.warn("Termbase UI init failed:", error);
 	});
 
 	window.addEventListener(
@@ -352,6 +354,7 @@ function bindGlobalSettings(): void {
 
 	bindGenerationParams();
 	bindContextSettings();
+	bindLogSettings();
 }
 
 /**
@@ -393,8 +396,38 @@ function bindContextSettings(): void {
 		"zctr-input-context-adjacent",
 		PREFS.CONTEXT_INCLUDE_ADJACENT_PARAGRAPHS,
 	);
+	// "包含术语" - independent of the context level (never greyed out):
+	// terminology is not a context layer, it is a separate injection input.
+	bindCheckbox(
+		"zctr-input-context-terminology",
+		PREFS.CONTEXT_INCLUDE_TERMINOLOGY,
+	);
+	// Master switch for termbase matching/injection (术语表 section).
+	bindCheckbox("zctr-input-termbase-enabled", PREFS.TERMINOLOGY_ENABLED);
 
 	updateContextLevelView();
+}
+
+/** Bind the log-level select (applies immediately; no restart needed). */
+function bindLogSettings(): void {
+	if (!doc) {
+		return;
+	}
+	const levelSelect = doc.getElementById(
+		"zctr-input-log-level",
+	) as HTMLSelectElement | null;
+	if (!levelSelect) {
+		return;
+	}
+	const current = (getPref(PREFS.LOG_LEVEL) as string) || "info";
+	levelSelect.value = ["error", "warn", "info", "debug"].includes(current)
+		? current
+		: "info";
+	setLogLevel(levelSelect.value);
+	levelSelect.addEventListener("change", () => {
+		setPref(PREFS.LOG_LEVEL, levelSelect.value);
+		setLogLevel(levelSelect.value);
+	});
 }
 
 /** Context level -> which "包含…" toggles are effective. */

@@ -7,6 +7,7 @@
 import {getPref, PREFS, setPref} from "../../utils/prefs";
 import {getProviderApiKey, setProviderApiKey} from "./credentials";
 import type {ProviderConfig} from "./types";
+import * as zlog from "../../utils/logger";
 
 export function getProviders(): ProviderConfig[] {
 	try {
@@ -35,7 +36,7 @@ export function getProviders(): ProviderConfig[] {
 		}
 		return providers;
 	} catch (error) {
-		ztoolkit.log("[ZCTr] Failed to parse providers:", error);
+		zlog.warn("Failed to parse providers:", error);
 		return [];
 	}
 }

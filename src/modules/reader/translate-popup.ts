@@ -19,6 +19,7 @@ import {startTranslation as startPipelineTranslation} from "../translation/pipel
 import {isCollectableTermText} from "../translation/term-actions";
 import type {ReaderEntry} from "../../types/reader";
 import {openCollectTermDialog} from "./collect-term";
+import * as zlog from "../../utils/logger";
 
 const POPUP_ID = "zctr-translate-popup";
 
@@ -354,7 +355,7 @@ async function startTranslation(
 	// Local cache hit: show the previous translation instantly
 	if (handle.fromCache) {
 		const cached = await handle.run();
-		Zotero.debug(`[ZCTr] cache hit: ${cached.length} chars`);
+		zlog.debug(`cache hit: ${cached.length} chars`);
 		cacheBadge.hidden = false;
 		result.textContent = cached;
 		collectDraft.targetText = cached;
@@ -516,7 +517,7 @@ function getSelectionViewportRect(
 			}
 		}
 	} catch (error) {
-		ztoolkit.log("[ZCTr] Failed to get selection rect:", error);
+		zlog.warn("Failed to get selection rect:", error);
 	}
 	return null;
 }
