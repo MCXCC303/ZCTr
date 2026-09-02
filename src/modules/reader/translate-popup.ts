@@ -16,7 +16,9 @@
  */
 
 import {startTranslation as startPipelineTranslation} from "../translation/pipeline";
+import {isCollectableTermText} from "../translation/term-actions";
 import type {ReaderEntry} from "../../types/reader";
+import {openCollectTermDialog} from "./collect-term";
 
 const POPUP_ID = "zctr-translate-popup";
 
@@ -26,6 +28,13 @@ const POPUP_ID = "zctr-translate-popup";
  */
 let currentPopup: HTMLElement | null = null;
 
+/** Draft for the "+ 收录术语" flow: the current selection and the latest
+ * translation text (filled as the translation arrives). */
+const collectDraft: {sourceText: string; targetText: string} = {
+	sourceText: "",
+	targetText: "",
+};
+
 export function openTranslatePopup(
 	entry: ReaderEntry,
 	text: string,
@@ -34,6 +43,8 @@ export function openTranslatePopup(
 ): void {
 	// Singleton: replace any existing popup
 	closePopup();
+	collectDraft.sourceText = text;
+	collectDraft.targetText = "";
 	const {doc} = entry;
 	const popup = doc.createElement("div");
 	popup.id = POPUP_ID;
@@ -184,7 +195,62 @@ export function openTranslatePopup(
 		"-webkit-user-select: text",
 	].join("; ");
 
-	popup.append(header, preview, result);
+	// Footer: "+ 收录术语" - files the selection + translation into a
+	// user-chosen termbase (see collect-term.ts). The draft is filled as the
+	// translation arrives. The footer is only rendered when the selection is
+	// a plausible TERM (short text); sentences/paragraphs never offer the
+	// collect option (term-actions.isCollectableTermText).
+	const collectable = isCollectableTermText(text);
+	let footer: HTMLElement | null = null;
+	if (collectable) {
+		footer = doc.createElement("div");
+		footer.style.cssText = [
+			"display: flex",
+			"justify-content: flex-end",
+			"padding: 4px 8px",
+			"flex-shrink: 0",
+			"border-top: 1px solid",
+			"border-top-color: var(--fill-quaternary, #e0e0e0)",
+		].join("; ");
+		const collectBtn = doc.createElement("button");
+		collectBtn.textContent = "＋ 收录术语";
+		collectBtn.title = "把当前选区与译文收录为术语到术语库";
+		collectBtn.style.cssText = [
+			"font-size: 11px",
+			"padding: 2px 10px",
+			"border-radius: 4px",
+			"cursor: pointer",
+			"border: 1px solid",
+			"border-color: var(--fill-quaternary, #c8c8c8)",
+			"background: none",
+			"color: var(--fill-primary, #000000)",
+		].join("; ");
+		collectBtn.addEventListener("click", (event) => {
+			event.stopPropagation();
+			collectDraft.sourceText = text;
+			void openCollectTermDialog(entry, {
+				sourceText: collectDraft.sourceText,
+				targetText: collectDraft.targetText,
+			}).then((saved) => {
+				if (!saved || !currentPopup?.contains(collectBtn)) {
+					return;
+				}
+				collectBtn.textContent = "✓ 已收录";
+				collectBtn.disabled = true;
+				setTimeout(() => {
+					collectBtn.textContent = "＋ 收录术语";
+					collectBtn.disabled = false;
+				}, 1600);
+			});
+		});
+		footer.append(collectBtn);
+	}
+
+	const popupParts: HTMLElement[] = [header, preview, result];
+	if (footer) {
+		popupParts.push(footer);
+	}
+	popup.append(...popupParts);
 	const mount = (doc.body || doc.documentElement) as HTMLElement;
 	mount.append(popup);
 
@@ -277,7 +343,7 @@ async function startTranslation(
 	const handle = await startPipelineTranslation(entry, text);
 	if (!handle) {
 		result.textContent =
-			"⚠ 未配置翻译供应商，请到 Zotero 设置 → ZCTr 中添加并激活一个供应商。";
+			"⚠ 未配置翻译供应商，请前往 ZCTr设置 中添加并激活一个供应商。";
 		return;
 	}
 
@@ -291,6 +357,7 @@ async function startTranslation(
 		Zotero.debug(`[ZCTr] cache hit: ${cached.length} chars`);
 		cacheBadge.hidden = false;
 		result.textContent = cached;
+		collectDraft.targetText = cached;
 		return;
 	}
 	cacheBadge.hidden = true;
@@ -327,11 +394,13 @@ async function startTranslation(
 			.run((delta) => {
 				if (isVisible()) {
 					result.textContent += delta;
+					collectDraft.targetText = result.textContent ?? "";
 				}
 			})
 			.then((full) => {
 				if (isVisible() && full) {
 					result.textContent = full;
+					collectDraft.targetText = full;
 				}
 			})
 			.catch(showError);
@@ -342,6 +411,7 @@ async function startTranslation(
 			.then((translation) => {
 				if (isVisible()) {
 					result.textContent = translation;
+					collectDraft.targetText = translation;
 				}
 			})
 			.catch(showError);
