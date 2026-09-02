@@ -21,10 +21,12 @@
  */
 
 import {formatContextBlocks} from "../context/renderer";
+import type {TranslationContext} from "../context/context";
 import {
-	hasAttachedContext,
-	type TranslationContext,
-} from "../context/context";
+	formatTerminologyBlock,
+	terminologyConstraint,
+} from "../terminology/inject";
+import type {MatchedTermSet} from "../terminology/model";
 
 export interface ChatMessage {
 	role: string;
@@ -129,21 +131,29 @@ function buildSystemMessage(targetLang: string): string {
  * Build the chat messages. The translation target is always wrapped in
  * explicit markers; with attached context the user message starts with the
  * [DOCUMENT] / [LOCAL CONTEXT] blocks (stable prefix for provider-side
- * caching), followed by the anti-leak instruction and the marked target.
+ * caching), followed by the optional [TERMINOLOGY] block (matched terms),
+ * the anti-leak instruction and the marked target.
+ *
+ * When `terminology` carries matched terms, the constraint sentence is
+ * appended to the instruction (adjacent to <target>) and the block sits
+ * between [LOCAL CONTEXT] and <target> - reference material only, never a
+ * translation target (P2 plan §3.3, §6).
  */
 export function buildMessages(
 	text: string,
 	targetLang: string,
 	context: TranslationContext,
+	terminology?: MatchedTermSet | null,
 ): ChatMessage[] {
 	const blocks = formatContextBlocks(context);
-	const hasContext = hasAttachedContext(context);
+	const termBlock = formatTerminologyBlock(terminology);
 	const {open, close} = pickTargetMarkers(text);
-	const instruction = `Translate ONLY the text between ${open} and ${close} below; output nothing else.`;
+	const constraint = termBlock ? ` ${terminologyConstraint()}` : "";
+	const instruction = `Translate ONLY the text between ${open} and ${close} below; output nothing else.${constraint}`;
 	const target = `${open}\n${text}\n${close}`;
-	const userContent = hasContext
-		? `${blocks}\n\n${instruction}\n\n${target}`
-		: `${instruction}\n\n${target}`;
+	const userContent = [blocks, termBlock, instruction, target]
+		.filter((part) => !!part)
+		.join("\n\n");
 	return [
 		{
 			role: "system",

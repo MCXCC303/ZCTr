@@ -36,6 +36,7 @@ import {
 } from "../runtime/runtime-config";
 import {parseShortcut, serializeShortcut} from "../../utils/shortcut";
 import {providerForms} from "./forms";
+import {registerTermbaseScripts} from "./termbase-ui";
 import {
 	clearFormEnv,
 	hEl,
@@ -67,6 +68,9 @@ export async function registerPrefsScripts(window: Window): Promise<void> {
 	renderProviderList();
 	bindButtons();
 	bindGlobalSettings();
+	void registerTermbaseScripts(window).catch((error) => {
+		ztoolkit.log("[ZCTr] Termbase UI init failed:", error);
+	});
 
 	window.addEventListener(
 		"unload",

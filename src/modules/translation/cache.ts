@@ -53,6 +53,8 @@ import {
 	hasAttachedContext,
 	type TranslationContext,
 } from "../context/context";
+import {canonicalMatchedTermSet} from "../terminology/model";
+import type {MatchedTermSet} from "../terminology/model";
 
 export interface TranslationCacheEntry {
 	/** Deterministic cache key (sha256 of the canonical request material),
@@ -112,6 +114,7 @@ class TranslationCache {
 		providerId: string,
 		runtimeConfig: TranslationRuntimeConfig,
 		context: TranslationContext,
+		terminology?: MatchedTermSet | null,
 	): string {
 		// NFC-normalize the source text so visually identical text whose
 		// characters are encoded as precomposed vs. decomposed (e.g. U+00C5
@@ -129,9 +132,21 @@ class TranslationCache {
 		// The context fingerprint covers every attached context field
 		// (policy, document, local); the same selection under a different
 		// abstract / local context / policy must not hit the old entry
-		// (architecture §15).
+		// (architecture §15). The termbase fingerprint covers the injected
+		// matched terms: a termbase edit must not silently reuse a
+		// translation generated under a different terminology
+		// (terminology architecture §19).
 		const contextFingerprint = hasAttachedContext(context)
 			? sha256Hex(JSON.stringify(canonicalContext(context)))
+			: null;
+		const termbaseMaterial = terminology
+			? {
+					ids: terminology.termbaseIds,
+					schemaVersion: terminology.schemaVersion,
+					matchedFingerprint: sha256Hex(
+						JSON.stringify(canonicalMatchedTermSet(terminology)),
+					),
+				}
 			: null;
 		const material = {
 			v: 2, // cache key schema version
@@ -143,6 +158,7 @@ class TranslationCache {
 			context: contextFingerprint
 				? {version: CONTEXT_VERSION, fingerprint: contextFingerprint}
 				: null,
+			termbase: termbaseMaterial,
 		};
 		return sha256Hex(JSON.stringify(material));
 	}
@@ -183,7 +199,8 @@ class TranslationCache {
 		if (!this.shouldPersist()) {
 			return null;
 		}
-		const dir = Zotero.getZoteroDirectory().clone();
+		// DataDirectory.dir is the modern, non-deprecated accessor.
+		const dir = Zotero.File.pathToFile(Zotero.DataDirectory.dir);
 		dir.append(CACHE_DIR_NAME);
 		if (!dir.exists()) {
 			// nsIFile.DIRECTORY_TYPE === 1
@@ -328,6 +345,7 @@ class TranslationCache {
 		providerId: string,
 		runtimeConfig: TranslationRuntimeConfig,
 		context: TranslationContext,
+		terminology?: MatchedTermSet | null,
 	): Promise<string | null> {
 		itemID = this.normalizeItemID(itemID);
 		await this.load(itemID);
@@ -335,7 +353,7 @@ class TranslationCache {
 		if (!queue) {
 			return null;
 		}
-		const key = this.key(text, targetLang, providerId, runtimeConfig, context);
+		const key = this.key(text, targetLang, providerId, runtimeConfig, context, terminology);
 		const entry = queue.get(key);
 		if (!entry) {
 			return null;
@@ -354,6 +372,7 @@ class TranslationCache {
 		providerId: string,
 		runtimeConfig: TranslationRuntimeConfig,
 		context: TranslationContext,
+		terminology: MatchedTermSet | null | undefined,
 		translation: string,
 	): Promise<void> {
 		itemID = this.normalizeItemID(itemID);
@@ -362,7 +381,7 @@ class TranslationCache {
 			string,
 			TranslationCacheEntry
 		>;
-		const key = this.key(text, targetLang, providerId, runtimeConfig, context);
+		const key = this.key(text, targetLang, providerId, runtimeConfig, context, terminology);
 		queue.delete(key);
 		queue.set(key, {
 			key,

@@ -141,6 +141,77 @@
 .zctr-description {
 	color: var(--zctr-text-secondary);
 	font-size: small;
+	/* HTML description blocks render embedded \n as line breaks */
+	white-space: pre-line;
+}
+
+/* ---------------------------------------------------------
+ * Components -- termbase manager (preferences pane)
+ * --------------------------------------------------------- */
+.zctr-termbase-list-pane {
+	width: 220px;
+	margin-right: 20px;
+}
+
+.zctr-termbase-select {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.zctr-termbase-entries {
+	box-sizing: border-box;
+	width: 100%;
+	max-height: 240px;
+	min-height: 120px;
+	overflow-y: auto;
+	background: var(--zctr-background);
+	border: 1px solid;
+	border-color: var(--zctr-divider);
+	border-radius: 5px;
+	padding: 4px;
+	margin-top: 5px;
+}
+
+.zctr-termbase-entry {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 8px;
+	padding: 2px 4px;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+.zctr-termbase-entry:hover {
+	background: var(--zctr-hover);
+}
+
+.zctr-termbase-entry.is-active {
+	background: var(--zctr-active);
+}
+
+.zctr-termbase-entry .zctr-termbase-entry-source {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.zctr-termbase-entry .zctr-termbase-entry-target {
+	color: var(--zctr-text-secondary);
+}
+
+.zctr-termbase-entry.is-forbidden .zctr-termbase-entry-source {
+	color: var(--zctr-error);
+}
+
+.zctr-termbase-editor-title {
+}
+
+/* Termbase editor form controls (wider than the generic 120/160px ones) */
+.zctr-termbase-input {
+	width: 200px;
+	box-sizing: border-box;
 }
 
 /* ---------------------------------------------------------

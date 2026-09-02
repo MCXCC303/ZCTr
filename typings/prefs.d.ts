@@ -22,6 +22,7 @@ declare namespace _ZoteroTypes {
       "contextIncludeTitle": boolean;
       "contextIncludeSectionTitle": boolean;
       "contextIncludeAdjacentParagraphs": boolean;
+      "activeTermbaseId": string;
       "cachePersist": boolean;
       "cacheLimit": number;
       "cachePersistLimit": number;

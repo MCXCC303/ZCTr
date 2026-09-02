@@ -21,6 +21,8 @@ pref("contextIncludeAbstract", true);
 pref("contextIncludeTitle", true);
 pref("contextIncludeSectionTitle", true);
 pref("contextIncludeAdjacentParagraphs", false);
+// 术语表：当前激活的术语库 id（编辑器选择持久化，重启后恢复）
+pref("activeTermbaseId", "");
 // 持久化翻译缓存（写入 Zotero 数据目录，重启后保留）
 pref("cachePersist", false);
 // 内存缓存队列长度

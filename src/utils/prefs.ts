@@ -34,6 +34,8 @@ export const PREFS = {
 	CONTEXT_INCLUDE_SECTION_TITLE: "contextIncludeSectionTitle",
 	/** Include previous/next paragraphs around the selection. */
 	CONTEXT_INCLUDE_ADJACENT_PARAGRAPHS: "contextIncludeAdjacentParagraphs",
+	/** Active (persisted) termbase id for the termbase manager UI. */
+	ACTIVE_TERMBASE_ID: "activeTermbaseId",
 	/** Whether the translation cache is persisted across sessions. */
 	CACHE_PERSIST: "cachePersist",
 	/** In-memory translation cache queue length. */

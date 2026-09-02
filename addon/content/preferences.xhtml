@@ -8,7 +8,7 @@
 			<!-- 左栏：供应商列表 -->
 			<vbox class="zctr-provider-list-pane">
 				<html:div id="zctr-provider-list" class="zctr-provider-list"></html:div>
-				<button id="zctr-btn-add" label="添加供应商" class="zctr-btn-add"/>
+				<button id="zctr-btn-add" label="添加供应商" class="zctr-btn-add" />
 			</vbox>
 
 			<!-- 右栏：供应商表单 -->
@@ -90,6 +90,72 @@
 	</groupbox>
 
 	<separator class="zctr-section-divider" />
+
+	<!-- 术语表 -->
+	<label class="zctr-section-title">
+		<html:h3>术语表</html:h3>
+	</label>
+	<groupbox class="zctr-settings-group">
+		<hbox align="stretch">
+			<!-- 左栏：术语库管理 -->
+			<vbox class="zctr-termbase-list-pane">
+				<html:select id="zctr-termbase-select" class="zctr-termbase-select">
+					<html:option value="">（无术语库）</html:option>
+				</html:select>
+				<button id="zctr-termbase-new" label="新建" />
+				<button id="zctr-termbase-delete" label="删除" />
+				<button id="zctr-termbase-import" label="导入" />
+				<button id="zctr-termbase-export" label="导出JSON" />
+				<button id="zctr-termbase-export-tbx" label="导出TBX" />
+				<spacer flex="1" />
+				<html:div id="zctr-termbase-meta" class="zctr-description"></html:div>
+			</vbox>
+
+			<!-- 右栏：词条编辑 -->
+			<vbox flex="1" class="zctr-termbase-editor">
+				<html:input id="zctr-termbase-search" placeholder="搜索词条…" class="zctr-full-width" />
+				<html:div id="zctr-termbase-entries" class="zctr-termbase-entries"></html:div>
+
+				<label class="zctr-section-title">词条编辑</label>
+				<groupbox class="zctr-settings-group">
+					<hbox align="center" class="zctr-setting-row">
+						<label flex="1">源术语</label>
+						<html:input id="zctr-termbase-src" class="zctr-termbase-input" />
+					</hbox>
+					<hbox align="center" class="zctr-setting-row">
+						<label flex="1">目标术语</label>
+						<html:input id="zctr-termbase-tgt" class="zctr-termbase-input" />
+					</hbox>
+					<hbox align="center" class="zctr-setting-row">
+						<label flex="1">状态</label>
+						<html:select id="zctr-termbase-status" class="zctr-termbase-input">
+							<html:option value="preferred">Preferred</html:option>
+							<html:option value="admitted">Admitted</html:option>
+							<html:option value="forbidden">Forbidden</html:option>
+							<html:option value="deprecated">Deprecated</html:option>
+						</html:select>
+					</hbox>
+					<hbox align="center" class="zctr-setting-row">
+						<label flex="1">变体（逗号分隔）</label>
+						<html:input id="zctr-termbase-variants" class="zctr-termbase-input" />
+					</hbox>
+					<hbox align="center" class="zctr-setting-row">
+						<label flex="1">备注</label>
+						<html:input id="zctr-termbase-note" class="zctr-termbase-input" />
+					</hbox>
+				</groupbox>
+				<html:div id="zctr-termbase-status-msg" class="zctr-description"></html:div>
+				<hbox class="zctr-btn-row">
+					<button id="zctr-termbase-add" label="新增词条" />
+					<button id="zctr-termbase-update" label="更新词条" />
+					<button id="zctr-termbase-remove" label="删除词条" />
+				</hbox>
+			</vbox>
+		</hbox>
+	</groupbox>
+
+	<separator class="zctr-section-divider" />
+
 	<!-- 全局设置区 -->
 	<label class="zctr-section-title">
 		<html:h3>全局设置</html:h3>
@@ -131,7 +197,12 @@
 	<groupbox class="zctr-settings-group">
 		<hbox align="center" class="zctr-setting-row">
 			<label flex="1">Temperature</label>
-			<html:input id="zctr-input-temperature" type="number" min="0" max="2" step="0.1" class="zctr-input-medium" />
+			<html:input id="zctr-input-temperature"
+			            type="number"
+			            min="0"
+			            max="2"
+			            step="0.1"
+			            class="zctr-input-medium" />
 		</hbox>
 
 		<hbox align="center" class="zctr-setting-row">

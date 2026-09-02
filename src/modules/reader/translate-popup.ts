@@ -50,7 +50,11 @@ export function openTranslatePopup(
 		"flex-direction: column",
 		"background: var(--material-sidepane, #ffffff)",
 		"color: var(--fill-primary, #000000)",
-		"border: 1px solid var(--fill-quaternary, #c8c8c8)",
+		// Zotero quirk: a border shorthand whose color is a CSS variable does
+		// not render; border-color must be a separate declaration (see
+		// preferences.css .zctr-provider-section).
+		"border: 1px solid",
+		"border-color: var(--fill-quaternary, #c8c8c8)",
 		"border-radius: 8px",
 		"box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25)",
 		"font-size: 13px",
@@ -69,7 +73,8 @@ export function openTranslatePopup(
 		"align-items: center",
 		"justify-content: space-between",
 		"padding: 6px 10px",
-		"border-bottom: 1px solid var(--fill-quaternary, #e0e0e0)",
+		"border-bottom: 1px solid",
+		"border-bottom-color: var(--fill-quaternary, #e0e0e0)",
 		"font-weight: 600",
 		"flex-shrink: 0",
 	].join("; ");
@@ -132,8 +137,10 @@ export function openTranslatePopup(
 		"width: 14px",
 		"height: 14px",
 		"cursor: se-resize",
-		"border-right: 3px solid var(--fill-tertiary, #999999)",
-		"border-bottom: 3px solid var(--fill-tertiary, #999999)",
+		"border-right: 3px solid",
+		"border-right-color: var(--fill-tertiary, #999999)",
+		"border-bottom: 3px solid",
+		"border-bottom-color: var(--fill-tertiary, #999999)",
 		"border-bottom-right-radius: 3px",
 		"opacity: 0.6",
 	].join("; ");
@@ -163,7 +170,21 @@ export function openTranslatePopup(
 		event.stopPropagation();
 	});
 
-	popup.append(header, result);
+	// Terminology preview: one matched term per line, source and target in
+	// two aligned columns (hidden until the pipeline resolves the terms).
+	const preview = doc.createElement("div");
+	preview.style.cssText = [
+		"display: none",
+		"font-size: 11px",
+		"color: var(--fill-secondary, #888)",
+		"padding: 4px 10px",
+		"border-bottom: 1px solid",
+		"border-bottom-color: var(--fill-quaternary, #e0e0e0)",
+		"user-select: text",
+		"-webkit-user-select: text",
+	].join("; ");
+
+	popup.append(header, preview, result);
 	const mount = (doc.body || doc.documentElement) as HTMLElement;
 	mount.append(popup);
 
@@ -205,13 +226,51 @@ export function openTranslatePopup(
 	// current one) and is closed via its close button or the Escape key.
 	currentPopup = popup;
 
-	startTranslation(entry, result, cacheBadge, text);
+	startTranslation(entry, result, cacheBadge, preview, text);
+}
+
+/**
+ * Render the matched terminology in the popup preview: one term per line,
+ * source and target in two aligned table columns (e.g.
+ *   twistane        扭转烷
+ *   bank            银行
+ * ). Hidden when nothing matched.
+ */
+function renderTerminologyPreview(
+	entry: ReaderEntry,
+	preview: HTMLElement,
+	terms: {sourceText: string; targetText?: string}[] | undefined,
+): void {
+	if (!terms?.length) {
+		preview.style.display = "none";
+		return;
+	}
+	preview.replaceChildren();
+
+	const table = entry.doc.createElement("table");
+	table.style.cssText = "border-collapse: collapse; margin-top: 2px;";
+	const tbody = entry.doc.createElement("tbody");
+	for (const term of terms) {
+		const tr = entry.doc.createElement("tr");
+		const tdSrc = entry.doc.createElement("td");
+		tdSrc.textContent = term.sourceText;
+		tdSrc.style.cssText = "padding: 0 12px 0 0; vertical-align: top;";
+		const tdTgt = entry.doc.createElement("td");
+		tdTgt.textContent = term.targetText ?? "（保留原文）";
+		tdTgt.style.cssText = "padding: 0; vertical-align: top;";
+		tr.append(tdSrc, tdTgt);
+		tbody.append(tr);
+	}
+	table.append(tbody);
+	preview.append(table);
+	preview.style.display = "";
 }
 
 async function startTranslation(
 	entry: ReaderEntry,
 	result: HTMLElement,
 	cacheBadge: HTMLElement,
+	preview: HTMLElement,
 	text: string,
 ): Promise<void> {
 	// Delegate the whole request (context, cache, transport) to the pipeline.
@@ -221,6 +280,8 @@ async function startTranslation(
 			"⚠ 未配置翻译供应商，请到 Zotero 设置 → ZCTr 中添加并激活一个供应商。";
 		return;
 	}
+
+	renderTerminologyPreview(entry, preview, handle.terminology?.matched);
 
 	const isVisible = (): boolean => !!currentPopup?.contains(result);
 
@@ -248,13 +309,14 @@ async function startTranslation(
 			"padding: 3px 14px",
 			"border-radius: 4px",
 			"cursor: pointer",
-			"border: 1px solid var(--fill-quaternary, #c8c8c8)",
+			"border: 1px solid",
+			"border-color: var(--fill-quaternary, #c8c8c8)",
 			"background: var(--material-background, #f5f5f5)",
 			"color: var(--fill-primary, #000000)",
 		].join("; ");
 		retry.addEventListener("click", (event) => {
 			event.stopPropagation();
-			startTranslation(entry, result, cacheBadge, text);
+			startTranslation(entry, result, cacheBadge, preview, text);
 		});
 		result.append(retry);
 	};

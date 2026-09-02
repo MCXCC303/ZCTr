@@ -29,12 +29,17 @@ import {
 import {buildMessages, pickTargetMarkers, stripTargetMarkers} from "./prompt";
 import {translationCache} from "./cache";
 import {buildTranslationRequest, type TranslationRequest} from "./request";
+import {listTermbases} from "../terminology/store";
+import {matchForTranslation} from "../terminology/context-aware";
+import type {MatchedTermSet} from "../terminology/model";
 
 export interface TranslationHandle {
 	/** True when the result came from the local cache (no provider request). */
 	fromCache: boolean;
 	/** Whether the transport streams deltas (drives the popup UX). */
 	streaming: boolean;
+	/** Matched terms injected into this request (undefined when none). */
+	terminology?: MatchedTermSet;
 	/**
 	 * Start/continue the translation. With streaming, `onDelta` is called
 	 * for each chunk; always resolves with the full translation text.
@@ -76,6 +81,24 @@ export async function startTranslation(
 		);
 	}
 
+	// Terminology matching (Phase 2): local, deterministic, zero network.
+	// Any failure degrades to no terminology - never blocks translation.
+	let terminology: MatchedTermSet | null = null;
+	try {
+		const termbases = await listTermbases();
+		terminology =
+			termbases.length > 0
+				? matchForTranslation(termbases, context, targetLang)
+				: null;
+	} catch (error) {
+		ztoolkit.log("[ZCTr] Terminology matching failed, skipping:", error);
+	}
+	if (terminology) {
+		Zotero.debug(
+			`[ZCTr] terminology matched: ${terminology.matched.length} terms in ${terminology.termbaseIds.join(",")}`,
+		);
+	}
+
 	const request: TranslationRequest = buildTranslationRequest(
 		provider,
 		text,
@@ -92,20 +115,23 @@ export async function startTranslation(
 		request.provider.id,
 		request.runtimeConfig,
 		request.context,
+		terminology,
 	);
 	if (cached !== null) {
 		return {
 			fromCache: true,
 			streaming: false,
+			terminology: terminology ?? undefined,
 			run: async () => cached as string,
 		};
 	}
 
-	// Build messages once per request (Phase 2 hooks in here).
+	// Build messages once per request (Phase 2 injection lives here).
 	const messages = buildMessages(
 		request.text,
 		getTargetLanguageName(request.targetLang),
 		request.context,
+		terminology,
 	);
 	const streaming = request.runtimeConfig.stream;
 	// Hard stop at the closing target marker: generation ends the moment the
@@ -116,6 +142,7 @@ export async function startTranslation(
 	return {
 		fromCache: false,
 		streaming,
+		terminology: terminology ?? undefined,
 		run: async (onDelta) => {
 			const raw = streaming
 				? await translateTextStreaming(
@@ -142,6 +169,7 @@ export async function startTranslation(
 					request.provider.id,
 					request.runtimeConfig,
 					request.context,
+					terminology,
 					full,
 				);
 			}

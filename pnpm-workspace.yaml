@@ -1,0 +1,10 @@
+# pnpm 11 defaults that break this project's install:
+# - allowBuilds: esbuild/@swc/core/es5-ext need their postinstall scripts
+#   (pnpm blocks build scripts by default);
+# - block-exotic-subdeps: zotero-types depends on git-repository packages
+#   (epubjs, pdfjs-dist).
+allowBuilds:
+  '@swc/core': true
+  es5-ext: true
+  esbuild: true
+block-exotic-subdeps: false
