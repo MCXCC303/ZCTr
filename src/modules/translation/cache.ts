@@ -305,11 +305,14 @@ class TranslationCache {
 				if (!file || !queue) {
 					return;
 				}
-				// Persist only the most-recent entries (Map order = recency),
-				// so the on-disk queue is capped independently of the memory
-				// queue.
+				// Persist only the most-recent entries, so the on-disk queue
+				// is capped independently of the memory queue. Map order is
+				// oldest -> newest (see trim(): the head is evicted first), so
+				// the LAST N entries are the recent ones; keeping them in that
+				// order also rebuilds the same LRU order on reload (doLoad
+				// appends in file order).
 				const persistLimit = this.getPersistLimit();
-				const toSave = [...queue.values()].slice(0, persistLimit);
+				const toSave = [...queue.values()].slice(-persistLimit);
 				await Zotero.File.putContentsAsync(file, JSON.stringify(toSave));
 			})
 			.catch((error) => {

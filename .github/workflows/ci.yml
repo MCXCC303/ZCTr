@@ -37,8 +37,12 @@ jobs:
           unzip -l "$XPI" | grep -q "bootstrap.js"
           unzip -l "$XPI" | grep -q "content/scripts/zctr.js"
           unzip -l "$XPI" | grep -q "content/preferences.xhtml"
-          # The build should also generate the Zotero update manifest
-          test -f .scaffold/build/update.json
+          # The build should also generate the Zotero update manifest.
+          # zotero-plugin-scaffold writes update.json for stable versions and
+          # update-beta.json for prereleases (version containing "-"), so
+          # accept either one - asserting update.json alone made every
+          # prerelease build fail this step.
+          test -f .scaffold/build/update.json || test -f .scaffold/build/update-beta.json
           echo "XPI verification passed"
 
       - name: Upload XPI artifact
