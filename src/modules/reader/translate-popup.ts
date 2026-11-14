@@ -19,6 +19,7 @@ import {startTranslation as startPipelineTranslation} from "../translation/pipel
 import {isCollectableTermText} from "../translation/term-actions";
 import type {ReaderEntry} from "../../types/reader";
 import {openCollectTermDialog} from "./collect-term";
+import {getString} from "../../utils/locale";
 import * as zlog from "../../utils/logger";
 
 const POPUP_ID = "zctr-translate-popup";
@@ -91,10 +92,10 @@ export function openTranslatePopup(
 		"flex-shrink: 0",
 	].join("; ");
 	const title = doc.createElement("span");
-	title.textContent = "ZCTr 翻译";
+	title.textContent = getString("popup-title");
 	const closeBtn = doc.createElement("button");
 	closeBtn.textContent = "✕";
-	closeBtn.title = "关闭";
+	closeBtn.title = getString("popup-close");
 	closeBtn.setAttribute("data-zctr-close", "1");
 	closeBtn.style.cssText = [
 		"border: none",
@@ -112,8 +113,8 @@ export function openTranslatePopup(
 	// Cache-hit badge shown in the header when the translation came from the
 	// local queue instead of a provider request
 	const cacheBadge = doc.createElement("span");
-	cacheBadge.textContent = "⚡ 缓存";
-	cacheBadge.title = "本次翻译来自本地缓存";
+	cacheBadge.textContent = getString("popup-cache-badge");
+	cacheBadge.title = getString("popup-cache-title");
 	cacheBadge.style.cssText = [
 		"font-size: 11px",
 		"color: #2f7cde",
@@ -214,8 +215,8 @@ export function openTranslatePopup(
 			"border-top-color: var(--fill-quaternary, #e0e0e0)",
 		].join("; ");
 		const collectBtn = doc.createElement("button");
-		collectBtn.textContent = "＋ 收录术语";
-		collectBtn.title = "把当前选区与译文收录为术语到术语库";
+		collectBtn.textContent = getString("popup-collect");
+		collectBtn.title = getString("popup-collect-title");
 		collectBtn.style.cssText = [
 			"font-size: 11px",
 			"padding: 2px 10px",
@@ -236,10 +237,10 @@ export function openTranslatePopup(
 				if (!saved || !currentPopup?.contains(collectBtn)) {
 					return;
 				}
-				collectBtn.textContent = "✓ 已收录";
+				collectBtn.textContent = getString("popup-collected");
 				collectBtn.disabled = true;
 				setTimeout(() => {
-					collectBtn.textContent = "＋ 收录术语";
+					collectBtn.textContent = getString("popup-collect");
 					collectBtn.disabled = false;
 				}, 1600);
 			});
@@ -323,7 +324,7 @@ function renderTerminologyPreview(
 		tdSrc.textContent = term.sourceText;
 		tdSrc.style.cssText = "padding: 0 12px 0 0; vertical-align: top;";
 		const tdTgt = entry.doc.createElement("td");
-		tdTgt.textContent = term.targetText ?? "（保留原文）";
+		tdTgt.textContent = term.targetText ?? getString("popup-keep-original");
 		tdTgt.style.cssText = "padding: 0; vertical-align: top;";
 		tr.append(tdSrc, tdTgt);
 		tbody.append(tr);
@@ -343,8 +344,7 @@ async function startTranslation(
 	// Delegate the whole request (context, cache, transport) to the pipeline.
 	const handle = await startPipelineTranslation(entry, text);
 	if (!handle) {
-		result.textContent =
-			"⚠ 未配置翻译供应商，请前往 ZCTr设置 中添加并激活一个供应商。";
+		result.textContent = getString("popup-no-provider");
 		return;
 	}
 
@@ -368,10 +368,12 @@ async function startTranslation(
 			return;
 		}
 		result.append(
-			entry.doc.createTextNode(`\n⚠ 翻译失败：${error.message}`),
+			entry.doc.createTextNode(
+				"\n" + getString("popup-error", {args: {detail: error.message}}),
+			),
 		);
 		const retry = entry.doc.createElement("button");
-		retry.textContent = "重试";
+		retry.textContent = getString("popup-retry");
 		retry.style.cssText = [
 			"margin-top: 8px",
 			"padding: 3px 14px",
@@ -406,7 +408,7 @@ async function startTranslation(
 			})
 			.catch(showError);
 	} else {
-		result.textContent = "翻译中…";
+		result.textContent = getString("popup-translating");
 		handle
 			.run()
 			.then((translation) => {

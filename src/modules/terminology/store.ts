@@ -31,6 +31,7 @@ import {
 } from "./model";
 import {parseTermbaseJson} from "./io";
 import {getTermbaseSubdirName} from "../../utils/build-info";
+import {getString} from "../../utils/locale";
 import * as zlog from "../../utils/logger";
 
 const DIR_NAME = "zctr";
@@ -237,12 +238,16 @@ export async function reloadTermbases(): Promise<Termbase[]> {
 export async function saveTermbase(termbase: Termbase): Promise<void> {
 	const issues = validateTermbase(termbase);
 	if (issues.length) {
-		throw new Error(`术语库校验失败: ${issues.join("; ")}`);
+		throw new Error(
+			getString("termbase-error-validation", {
+				args: {detail: issues.join("; ")},
+			}),
+		);
 	}
 	await migrateLegacyTermbases();
 	const file = termbaseFile(termbase.termbaseId);
 	if (!file) {
-		throw new Error("无法访问术语库目录");
+		throw new Error(getString("termbase-error-access-dir"));
 	}
 	try {
 		await (Zotero.File as any).putContentsAsync(

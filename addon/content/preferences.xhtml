@@ -1,33 +1,38 @@
+<linkset>
+	<!-- Strings for this pane live in addon/locale/<locale>/addon.ftl; the
+	     build renames it to __addonRef__-addon.ftl and prefixes the ids of
+	     both the FTL messages and the data-l10n-id attributes below. -->
+	<html:link rel="localization" href="__addonRef__-addon.ftl"/>
+</linkset>
 <groupbox class="zctr-preferences" onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window })">
 	<!-- 供应商设置 -->
 	<label>
-		<html:h3>供应商设置</html:h3>
+		<html:h3 data-l10n-id="pref-section-providers"></html:h3>
 	</label>
 	<groupbox class="zctr-provider-section">
 		<hbox align="stretch" class="zctr-provider-layout">
 			<!-- 左栏：供应商列表 -->
 			<vbox class="zctr-provider-list-pane">
 				<html:div id="zctr-provider-list" class="zctr-provider-list"></html:div>
-				<button id="zctr-btn-add" label="添加供应商" class="zctr-btn-add" />
+				<button id="zctr-btn-add" data-l10n-id="pref-btn-add-provider" class="zctr-btn-add" />
 			</vbox>
 
 			<!-- 右栏：供应商表单 -->
 			<vbox flex="1" class="zctr-provider-form">
-				<label>供应商类型</label>
+				<label data-l10n-id="pref-label-provider-type"></label>
 				<html:select id="zctr-input-type" class="zctr-full-width">
-					<html:option value="openai">OpenAI 兼容</html:option>
+					<html:option value="openai" data-l10n-id="pref-type-openai"></html:option>
 					<html:option value="deepseek">DeepSeek</html:option>
 					<html:option value="ollama">Ollama</html:option>
 				</html:select>
 
-				<label>名称</label>
+				<label data-l10n-id="pref-label-provider-name"></label>
 				<html:input id="zctr-input-name"
-				            placeholder="如: 我的 DeepSeek / 本地 Ollama"
 				            class="zctr-full-width" />
 
 				<!-- OpenAI 兼容：API Base URL -->
 				<vbox id="zctr-field-baseurl">
-					<label>API Base URL</label>
+					<label data-l10n-id="pref-label-baseurl"></label>
 					<html:input id="zctr-input-baseurl"
 					            placeholder="https://api.openai.com/v1"
 					            class="zctr-full-width" />
@@ -35,7 +40,7 @@
 
 				<!-- DeepSeek：模型下拉 -->
 				<vbox id="zctr-field-model-select">
-					<label>模型</label>
+					<label data-l10n-id="pref-label-model"></label>
 					<html:select id="zctr-input-model-select" class="zctr-full-width">
 						<html:option value="deepseek-v4-pro">deepseek-v4-pro</html:option>
 						<html:option value="deepseek-v4-flash">deepseek-v4-flash</html:option>
@@ -44,36 +49,35 @@
 
 				<!-- OpenAI 兼容：模型文本输入 -->
 				<vbox id="zctr-field-model">
-					<label>模型</label>
+					<label data-l10n-id="pref-label-model"></label>
 					<html:input id="zctr-input-model"
-					            placeholder="如: gpt-4o-mini"
 					            class="zctr-full-width"
 					/>
 				</vbox>
 
 				<!-- Ollama：模型下拉（测试连接后启用） -->
 				<vbox id="zctr-field-model-ollama" hidden="true">
-					<label>模型</label>
+					<label data-l10n-id="pref-label-model"></label>
 					<html:select id="zctr-input-model-ollama"
 					             disabled="disabled"
 					             class="zctr-full-width">
-						<html:option value="">请先测试连接</html:option>
+						<html:option value="" data-l10n-id="pref-ollama-test-first"></html:option>
 					</html:select>
 				</vbox>
 
 				<!-- Ollama：端口 + 连通性检测 -->
 				<vbox id="zctr-field-port">
-					<label>Ollama 端口</label>
+					<label data-l10n-id="pref-label-ollama-port"></label>
 					<hbox align="center" class="zctr-setting-row">
 						<html:input id="zctr-input-port" type="number" value="11434" class="zctr-input-medium" />
-						<button id="zctr-btn-test-ollama" label="测试连接" />
+						<button id="zctr-btn-test-ollama" data-l10n-id="pref-btn-test-connection" />
 					</hbox>
 					<label id="zctr-ollama-status" class="zctr-description"></label>
 				</vbox>
 
 				<!-- API Key（Ollama 不需要） -->
 				<vbox id="zctr-field-apikey">
-					<label>API Key</label>
+					<label data-l10n-id="pref-label-apikey"></label>
 					<html:input id="zctr-input-apikey"
 					            type="password"
 					            placeholder="sk-..."
@@ -81,9 +85,9 @@
 				</vbox>
 
 				<hbox class="zctr-btn-row">
-					<button id="zctr-btn-save" label="保存" />
-					<button id="zctr-btn-active" label="设为激活" />
-					<button id="zctr-btn-delete" label="删除" />
+					<button id="zctr-btn-save" data-l10n-id="pref-btn-save" />
+					<button id="zctr-btn-active" data-l10n-id="pref-btn-set-active" />
+					<button id="zctr-btn-delete" data-l10n-id="pref-btn-delete" />
 				</hbox>
 			</vbox>
 		</hbox>
@@ -93,68 +97,68 @@
 
 	<!-- 术语表 -->
 	<label class="zctr-section-title">
-		<html:h3>术语表</html:h3>
+		<html:h3 data-l10n-id="pref-section-termbase"></html:h3>
 	</label>
 	<groupbox class="zctr-settings-group">
 		<hbox align="center" class="zctr-setting-row">
 			<html:input id="zctr-input-termbase-enabled" type="checkbox" />
-			<label flex="1">启用术语匹配与注入</label>
+			<label flex="1" data-l10n-id="pref-label-termbase-enabled"></label>
 		</hbox>
-		<label class="zctr-description">ZCTr 默认翻译时仅使用选中的词库进行术语匹配，未激活时使用全部兼容词库</label>
+		<label class="zctr-description" data-l10n-id="pref-desc-termbase-scope"></label>
 		<hbox align="stretch">
 			<!-- 左栏：术语库管理 -->
 			<vbox class="zctr-termbase-list-pane">
 				<html:select id="zctr-termbase-select" class="zctr-termbase-select">
-					<html:option value="">（无术语库）</html:option>
+					<html:option value="" data-l10n-id="pref-termbase-none"></html:option>
 				</html:select>
-				<button id="zctr-termbase-new" label="新建" />
-				<button id="zctr-termbase-delete" label="删除" />
-				<button id="zctr-termbase-import" label="导入" />
-				<button id="zctr-termbase-refresh" label="刷新" />
-				<button id="zctr-termbase-export" label="导出JSON" />
-				<button id="zctr-termbase-export-tbx" label="导出TBX" />
+				<button id="zctr-termbase-new" data-l10n-id="pref-termbase-new" />
+				<button id="zctr-termbase-delete" data-l10n-id="pref-termbase-delete" />
+				<button id="zctr-termbase-import" data-l10n-id="pref-termbase-import" />
+				<button id="zctr-termbase-refresh" data-l10n-id="pref-termbase-refresh" />
+				<button id="zctr-termbase-export" data-l10n-id="pref-termbase-export-json" />
+				<button id="zctr-termbase-export-tbx" data-l10n-id="pref-termbase-export-tbx" />
 				<spacer flex="1" />
 				<html:div id="zctr-termbase-meta" class="zctr-description"></html:div>
 			</vbox>
 
 			<!-- 右栏：词条编辑 -->
 			<vbox flex="1" class="zctr-termbase-editor">
-				<html:input id="zctr-termbase-search" placeholder="搜索词条…" class="zctr-full-width" />
+				<html:input id="zctr-termbase-search" class="zctr-full-width" />
 				<html:div id="zctr-termbase-entries" class="zctr-termbase-entries"></html:div>
 
-				<label class="zctr-section-title">词条编辑</label>
+				<label class="zctr-section-title" data-l10n-id="pref-termbase-entries-title"></label>
 				<groupbox class="zctr-settings-group">
 					<hbox align="center" class="zctr-setting-row">
-						<label flex="1">源术语</label>
+						<label flex="1" data-l10n-id="pref-termbase-src"></label>
 						<html:input id="zctr-termbase-src" class="zctr-termbase-input" />
 					</hbox>
 					<hbox align="center" class="zctr-setting-row">
-						<label flex="1">目标术语</label>
+						<label flex="1" data-l10n-id="pref-termbase-tgt"></label>
 						<html:input id="zctr-termbase-tgt" class="zctr-termbase-input" />
 					</hbox>
 					<hbox align="center" class="zctr-setting-row">
-						<label flex="1">状态</label>
+						<label flex="1" data-l10n-id="pref-termbase-status"></label>
 						<html:select id="zctr-termbase-status" class="zctr-termbase-input">
-							<html:option value="preferred">Preferred</html:option>
-							<html:option value="admitted">Admitted</html:option>
-							<html:option value="forbidden">Forbidden</html:option>
-							<html:option value="deprecated">Deprecated</html:option>
+							<html:option value="preferred" data-l10n-id="pref-termbase-status-preferred"></html:option>
+							<html:option value="admitted" data-l10n-id="pref-termbase-status-admitted"></html:option>
+							<html:option value="forbidden" data-l10n-id="pref-termbase-status-forbidden"></html:option>
+							<html:option value="deprecated" data-l10n-id="pref-termbase-status-deprecated"></html:option>
 						</html:select>
 					</hbox>
 					<hbox align="center" class="zctr-setting-row">
-						<label flex="1">变体（逗号分隔）</label>
+						<label flex="1" data-l10n-id="pref-termbase-variants"></label>
 						<html:input id="zctr-termbase-variants" class="zctr-termbase-input" />
 					</hbox>
 					<hbox align="center" class="zctr-setting-row">
-						<label flex="1">备注</label>
+						<label flex="1" data-l10n-id="pref-termbase-note"></label>
 						<html:input id="zctr-termbase-note" class="zctr-termbase-input" />
 					</hbox>
 				</groupbox>
 				<html:div id="zctr-termbase-status-msg" class="zctr-description"></html:div>
 				<hbox class="zctr-btn-row">
-					<button id="zctr-termbase-add" label="新增词条" />
-					<button id="zctr-termbase-update" label="更新词条" />
-					<button id="zctr-termbase-remove" label="删除词条" />
+					<button id="zctr-termbase-add" data-l10n-id="pref-termbase-add" />
+					<button id="zctr-termbase-update" data-l10n-id="pref-termbase-update" />
+					<button id="zctr-termbase-remove" data-l10n-id="pref-termbase-remove" />
 				</hbox>
 			</vbox>
 		</hbox>
@@ -164,40 +168,39 @@
 
 	<!-- 全局设置区 -->
 	<label class="zctr-section-title">
-		<html:h3>全局设置</html:h3>
+		<html:h3 data-l10n-id="pref-section-global"></html:h3>
 	</label>
 
 	<!-- 翻译设置 -->
 	<label class="zctr-section-title">
-		<html:h2>翻译设置</html:h2>
+		<html:h2 data-l10n-id="pref-section-translation"></html:h2>
 	</label>
 
 	<groupbox class="zctr-settings-group">
 		<hbox align="center" class="zctr-setting-row">
-			<label flex="1">目标语言</label>
+			<label flex="1" data-l10n-id="pref-label-target-lang"></label>
 			<html:select id="zctr-input-targetlang" class="zctr-input-select">
 				<!-- Options populated by JS from TARGET_LANGUAGES -->
 			</html:select>
 		</hbox>
 
 		<hbox align="center" class="zctr-setting-row">
-			<label flex="1">点按翻译快捷键</label>
+			<label flex="1" data-l10n-id="pref-label-shortcut"></label>
 			<html:input id="zctr-input-shortcut"
 			            readonly="readonly"
-			            placeholder="点击后按组合键，Esc 清除"
 			            class="zctr-input-shortcut" />
 		</hbox>
 
 		<hbox align="center" class="zctr-setting-row">
 			<html:input id="zctr-input-streaming" type="checkbox" />
-			<label flex="1">使用流式输出</label>
+			<label flex="1" data-l10n-id="pref-label-streaming"></label>
 		</hbox>
 	</groupbox>
 
 
 	<!-- 生成参数 -->
 	<label class="zctr-section-title">
-		<html:h2>生成参数</html:h2>
+		<html:h2 data-l10n-id="pref-section-generation"></html:h2>
 	</label>
 
 	<groupbox class="zctr-settings-group">
@@ -218,25 +221,23 @@
 		</hbox>
 
 		<html:details>
-			<html:summary class="zctr-summary-params">
-				高级参数（仅对支持的 Provider/Model 生效）
-			</html:summary>
+			<html:summary class="zctr-summary-params" data-l10n-id="pref-desc-advanced-params"></html:summary>
 
 			<hbox align="center" class="zctr-setting-row">
 				<label flex="1">Top P</label>
-				<html:input id="zctr-input-top-p" type="number" min="0" max="1" step="0.05" placeholder="默认"
+				<html:input id="zctr-input-top-p" type="number" min="0" max="1" step="0.05"
 				            class="zctr-input-medium" />
 			</hbox>
 
 			<hbox align="center" class="zctr-setting-row">
 				<label flex="1">Top K</label>
-				<html:input id="zctr-input-top-k" type="number" min="0" step="1" placeholder="默认"
+				<html:input id="zctr-input-top-k" type="number" min="0" step="1"
 				            class="zctr-input-medium" />
 			</hbox>
 
 			<hbox align="center" class="zctr-setting-row">
 				<label flex="1">Repetition Penalty</label>
-				<html:input id="zctr-input-rep-penalty" type="number" min="1" step="0.05" placeholder="默认"
+				<html:input id="zctr-input-rep-penalty" type="number" min="1" step="0.05"
 				            class="zctr-input-medium" />
 			</hbox>
 		</html:details>
@@ -245,12 +246,12 @@
 
 	<!-- 上下文 -->
 	<label class="zctr-section-title">
-		<html:h2>上下文</html:h2>
+		<html:h2 data-l10n-id="pref-section-context"></html:h2>
 	</label>
 
 	<groupbox class="zctr-settings-group">
 		<hbox align="center" class="zctr-setting-row">
-			<label flex="1">上下文级别</label>
+			<label flex="1" data-l10n-id="pref-label-context-level"></label>
 			<html:select id="zctr-input-context-level" class="zctr-input-select">
 				<html:option value="selection">Select</html:option>
 				<html:option value="local">Local</html:option>
@@ -263,65 +264,65 @@
 
 		<hbox align="center" class="zctr-setting-row">
 			<html:input id="zctr-input-context-abstract" type="checkbox" />
-			<label flex="1">包含 Abstract</label>
+			<label flex="1" data-l10n-id="pref-label-context-abstract"></label>
 		</hbox>
 
 		<hbox align="center" class="zctr-setting-row">
 			<html:input id="zctr-input-context-title" type="checkbox" />
-			<label flex="1">包含条目标题</label>
+			<label flex="1" data-l10n-id="pref-label-context-title"></label>
 		</hbox>
 
 		<hbox align="center" class="zctr-setting-row">
 			<html:input id="zctr-input-context-section-title" type="checkbox" />
-			<label flex="1">包含小节标题（可用时）</label>
+			<label flex="1" data-l10n-id="pref-label-context-section-title"></label>
 		</hbox>
 
 		<hbox align="center" class="zctr-setting-row">
 			<html:input id="zctr-input-context-adjacent" type="checkbox" />
-			<label flex="1">包含相邻段落</label>
+			<label flex="1" data-l10n-id="pref-label-context-adjacent"></label>
 		</hbox>
 
-		<label class="zctr-description">上下文仅用于消除指代与术语歧义，不参与译文输出</label>
+		<label class="zctr-description" data-l10n-id="pref-desc-context"></label>
 
 		<hbox align="center" class="zctr-setting-row">
 			<html:input id="zctr-input-context-terminology" type="checkbox" />
-			<label flex="1">包含术语</label>
+			<label flex="1" data-l10n-id="pref-label-context-terminology"></label>
 		</hbox>
 	</groupbox>
 
 
 	<!-- 缓存设置 -->
 	<label class="zctr-section-title">
-		<html:h2>缓存设置</html:h2>
+		<html:h2 data-l10n-id="pref-section-cache"></html:h2>
 	</label>
 
 	<groupbox class="zctr-settings-group">
 		<hbox align="center" class="zctr-setting-row">
 			<html:input id="zctr-input-cache-persist" type="checkbox" />
-			<label flex="1">持久化翻译缓存</label>
+			<label flex="1" data-l10n-id="pref-label-cache-persist"></label>
 		</hbox>
 
 		<hbox align="center" class="zctr-setting-row">
-			<label flex="1">缓存队列长度（内存）</label>
+			<label flex="1" data-l10n-id="pref-label-cache-limit-memory"></label>
 			<html:input id="zctr-input-cache-limit" type="number" value="50" class="zctr-input-medium" />
 		</hbox>
 
 		<hbox align="center" class="zctr-setting-row">
-			<label flex="1">缓存队列长度（文件）</label>
+			<label flex="1" data-l10n-id="pref-label-cache-limit-file"></label>
 			<html:input id="zctr-input-cache-persist-limit" type="number" value="100" class="zctr-input-medium" />
 		</hbox>
 
-		<label class="zctr-description">-1 表示不限制长度（缓存不断累积可能导致运行缓慢）</label>
+		<label class="zctr-description" data-l10n-id="pref-desc-cache-limit"></label>
 	</groupbox>
 
 	<!-- 日志 -->
 	<label class="zctr-section-title">
-		<html:h2>日志</html:h2>
+		<html:h2 data-l10n-id="pref-section-log"></html:h2>
 	</label>
 
 	<groupbox class="zctr-settings-group">
 		<hbox align="center" class="zctr-setting-row">
-			<label flex="1">日志级别</label>
+			<label flex="1" data-l10n-id="pref-label-log-level"></label>
 			<html:select id="zctr-input-log-level" class="zctr-input-select">
 				<html:option value="error">Error</html:option>
 				<html:option value="warn">Warn</html:option>

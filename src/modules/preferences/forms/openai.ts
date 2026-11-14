@@ -5,6 +5,7 @@
 
 import {getWin, inputValue, type ProviderForm, setInputValue, setVisible,} from "../provider-form";
 import type {ProviderConfig} from "../../provider/types";
+import {getString} from "../../../utils/locale";
 
 export const openaiForm: ProviderForm = {
 	setVisible(visible: boolean): void {
@@ -23,11 +24,11 @@ export const openaiForm: ProviderForm = {
 			.replace(/\/+$/, "");
 		const model = inputValue("zctr-input-model").trim();
 		if (!apiBaseUrl) {
-			getWin()?.alert("API Base URL 不能为空。");
+			getWin()?.alert(getString("openai-error-baseurl"));
 			return null;
 		}
 		if (!model) {
-			getWin()?.alert("模型不能为空。");
+			getWin()?.alert(getString("openai-error-model"));
 			return null;
 		}
 		return {

@@ -9,6 +9,7 @@ import {
 } from "./modules/reader/hotkey";
 import {closePopup} from "./modules/reader/translate-popup";
 import {registerPrefsScripts} from "./modules/preferences/prefs-ui";
+import {getString, initLocale} from "./utils/locale";
 import * as zlog from "./utils/logger";
 
 async function onStartup() {
@@ -19,12 +20,15 @@ async function onStartup() {
 		Zotero.uiReadyPromise,
 	]);
 
+	// Load the plugin's FTL strings (must happen before any string is fetched)
+	initLocale();
+
 	// Register the preferences pane
 	Zotero.PreferencePanes.register({
 		pluginID: addon.data.config.addonID,
 		id: "zctr-prefpane",
 		src: rootURI + "content/preferences.xhtml",
-		label: "ZCTr",
+		label: getString("addon-name"),
 		image: `chrome://${addon.data.config.addonRef}/content/icons/favicon.svg`,
 		// Absolute URL required: resolveURI() resolves relative paths against
 		// the addon package ROOT (.../zc-tr.xpi!/), but the stylesheet lives in
@@ -94,7 +98,9 @@ async function onPrefsEvent(
 		Zotero.logError(error as Error);
 		try {
 			(data.window as Window).alert(
-				`ZCTr 设置初始化失败: ${(error as Error).message}`,
+				getString("prefs-init-error", {
+					args: {detail: (error as Error).message},
+				}),
 			);
 		} catch {
 			// Ignore alert failures

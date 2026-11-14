@@ -16,6 +16,7 @@ import {
 	type ContextMenuEvent,
 } from "./common";
 import {openTranslatePopup} from "./translate-popup";
+import {getString} from "../../utils/locale";
 import * as zlog from "../../utils/logger";
 
 function handleViewContextMenu(event: ContextMenuEvent): void {
@@ -35,7 +36,7 @@ function handleViewContextMenu(event: ContextMenuEvent): void {
 
 	const {x, y} = event.params || {};
 	event.append?.({
-		label: "ZCTr 翻译",
+		label: getString("menu-translate"),
 		onCommand: () => {
 			const entry = consumeReaderEntry(id);
 			if (entry) {

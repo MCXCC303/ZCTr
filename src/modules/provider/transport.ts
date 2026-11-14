@@ -11,6 +11,7 @@
 import type {ProviderConfig} from "./types";
 import {buildProviderPayloadParams} from "./adapter";
 import type {TranslationRuntimeConfig} from "../runtime/runtime-config";
+import {getString} from "../../utils/locale";
 import * as zlog from "../../utils/logger";
 
 export interface ChatMessage {
@@ -236,7 +237,7 @@ export async function testOllamaConnection(
 		response = await fetch(url, {method: "GET"});
 	} catch (error) {
 		throw new Error(
-			(error as Error)?.message || "无法连接 Ollama 服务",
+			(error as Error)?.message || getString("error-ollama-unreachable"),
 		);
 	}
 	if (!response.ok) {

@@ -27,6 +27,7 @@ import {
 	type TermStatus,
 } from "../terminology/model";
 import {getPref, PREFS, setPref} from "../../utils/prefs";
+import {getString} from "../../utils/locale";
 import {hEl, XHTML_NS} from "./provider-form";
 import * as zlog from "../../utils/logger";
 
@@ -115,16 +116,24 @@ async function refreshTermbases(): Promise<void> {
 		select.replaceChildren();
 		const placeholder = doc!.createElementNS(XHTML_NS, "option") as HTMLOptionElement;
 		placeholder.value = "";
-		placeholder.textContent = termbases.length ? "选择术语库…" : "（无术语库）";
+		placeholder.textContent = termbases.length
+			? getString("tb-select-placeholder")
+			: getString("tb-select-empty");
 		select.append(placeholder);
 		const activeId = activeTermbaseId();
 		for (const tb of termbases) {
 			const option = doc!.createElementNS(XHTML_NS, "option") as HTMLOptionElement;
 			option.value = tb.termbaseId;
+			const args = {
+				name: tb.name,
+				src: tb.sourceLanguage,
+				tgt: tb.targetLanguage,
+				count: tb.entries.length,
+			};
 			option.textContent =
 				tb.termbaseId === activeId
-					? `${tb.name} (${tb.sourceLanguage}→${tb.targetLanguage}, ${tb.entries.length})（激活）`
-					: `${tb.name} (${tb.sourceLanguage}→${tb.targetLanguage}, ${tb.entries.length})`;
+					? getString("tb-option-active", {args})
+					: getString("tb-option", {args});
 			select.append(option);
 		}
 		select.value = selectedId ?? "";
@@ -137,8 +146,22 @@ function renderMeta(): void {
 	const meta = get("zctr-termbase-meta");
 	const tb = selectedTermbase();
 	meta!.textContent = tb
-		? `术语库：${tb.name}\n术语翻译方向：${tb.sourceLanguage} → ${tb.targetLanguage}\n词条数：${tb.entries.length}\n创建于：${tb.updatedAt ? new Date(tb.updatedAt).toLocaleDateString() : "-"}\n最近修订于：${tb.updatedAt ? new Date(tb.updatedAt).toLocaleDateString() : "-"}\n描述：${tb.description ? tb.description : "-"}\n`
-		: "术语库用于约束特定术语的译法。";
+		? getString("tb-meta", {
+			args: {
+				name: tb.name,
+				src: tb.sourceLanguage,
+				tgt: tb.targetLanguage,
+				count: tb.entries.length,
+				created: tb.updatedAt
+					? new Date(tb.updatedAt).toLocaleDateString()
+					: "-",
+				updated: tb.updatedAt
+					? new Date(tb.updatedAt).toLocaleDateString()
+					: "-",
+				description: tb.description ? tb.description : "-",
+			},
+		}) + "\n"
+		: getString("tb-meta-hint");
 }
 
 function renderEntries(): void {
@@ -174,10 +197,10 @@ function renderEntries(): void {
 		}${source?.status === "forbidden" ? " is-forbidden" : ""}`;
 		const srcSpan = doc!.createElementNS(XHTML_NS, "span") as HTMLSpanElement;
 		srcSpan.className = "zctr-termbase-entry-source";
-		srcSpan.textContent = source?.text ?? "（缺源术语）";
+		srcSpan.textContent = source?.text ?? getString("tb-missing-source");
 		const tgtSpan = doc!.createElementNS(XHTML_NS, "span") as HTMLSpanElement;
 		tgtSpan.className = "zctr-termbase-entry-target";
-		tgtSpan.textContent = target?.text ?? "（缺目标术语）";
+		tgtSpan.textContent = target?.text ?? getString("tb-missing-target");
 		row.append(srcSpan, tgtSpan);
 		row.title = `${source?.status ?? ""} ${source?.note ?? ""}`.trim();
 		row.addEventListener("click", () => {
@@ -196,14 +219,20 @@ function renderEntries(): void {
 		container.append(
 			hEl(
 				"div",
-				`共 ${entries.length} 条匹配，仅显示前 ${ENTRY_RENDER_LIMIT} 条，请用上方搜索框过滤`,
+				getString("tb-entries-truncated", {
+					args: {count: entries.length, max: ENTRY_RENDER_LIMIT},
+				}),
 				"color: var(--zctr-text-secondary); font-size: small; padding: 4px;",
 			),
 		);
 	}
 	if (!entries.length) {
 		container.append(
-			hEl("div", query ? "没有匹配的词条" : "（空术语库，使用下方表单新增词条）", "color: var(--zctr-text-secondary); font-size: small; padding: 4px;"),
+			hEl(
+				"div",
+				query ? getString("tb-entries-no-match") : getString("tb-entries-empty"),
+				"color: var(--zctr-text-secondary); font-size: small; padding: 4px;",
+			),
 		);
 	}
 }
@@ -241,7 +270,7 @@ function setStatusMessage(message: string): void {
 function formTermbase(): Termbase | null {
 	const tb = selectedTermbase();
 	if (!tb) {
-		setStatusMessage("请先选择一个术语库");
+		setStatusMessage(getString("tb-msg-no-termbase-selected"));
 		return null;
 	}
 	return tb;
@@ -288,30 +317,30 @@ function addEntry(): void {
 	const sourceText = inputValue("zctr-termbase-src");
 	const targetText = inputValue("zctr-termbase-tgt");
 	if (!sourceText || !targetText) {
-		setStatusMessage("源术语与目标术语不能为空");
+		setStatusMessage(getString("tb-msg-terms-required"));
 		return;
 	}
 	const conceptId = `c-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 	tb.entries.push(formConcept(tb, conceptId));
-	persistAndRefresh(tb, conceptId, "已新增词条");
+	persistAndRefresh(tb, conceptId, getString("tb-msg-entry-added"));
 }
 
 function updateEntry(): void {
 	const tb = formTermbase();
 	if (!tb || !editingConceptId) {
-		setStatusMessage("请先选择要更新的词条");
+		setStatusMessage(getString("tb-msg-select-entry-to-update"));
 		return;
 	}
 	const idx = tb.entries.findIndex((e) => e.conceptId === editingConceptId);
 	if (idx === -1) {
-		setStatusMessage("词条不存在（可能已被删除）");
+		setStatusMessage(getString("tb-msg-entry-missing"));
 		editingConceptId = null;
 		return;
 	}
 	const sourceText = inputValue("zctr-termbase-src");
 	const targetText = inputValue("zctr-termbase-tgt");
 	if (!sourceText || !targetText) {
-		setStatusMessage("源术语与目标术语不能为空");
+		setStatusMessage(getString("tb-msg-terms-required"));
 		return;
 	}
 	// Preserve non-primary terms (e.g. extra languages) untouched.
@@ -322,18 +351,18 @@ function updateEntry(): void {
 			t.language !== tb.sourceLanguage && t.language !== tb.targetLanguage,
 	);
 	tb.entries[idx] = {...fresh, terms: [...fresh.terms, ...extra]};
-	persistAndRefresh(tb, editingConceptId, "已更新词条");
+	persistAndRefresh(tb, editingConceptId, getString("tb-msg-entry-updated"));
 }
 
 function removeEntry(): void {
 	const tb = formTermbase();
 	if (!tb || !editingConceptId) {
-		setStatusMessage("请先选择要删除的词条");
+		setStatusMessage(getString("tb-msg-select-entry-to-delete"));
 		return;
 	}
 	tb.entries = tb.entries.filter((e) => e.conceptId !== editingConceptId);
 	editingConceptId = null;
-	persistAndRefresh(tb, null, "已删除词条");
+	persistAndRefresh(tb, null, getString("tb-msg-entry-removed"));
 }
 
 async function persistAndRefresh(
@@ -345,7 +374,11 @@ async function persistAndRefresh(
 	try {
 		await saveTermbase(tb);
 	} catch (error) {
-		setStatusMessage(`保存失败: ${(error as Error).message}`);
+		setStatusMessage(
+			getString("tb-msg-save-failed", {
+				args: {detail: (error as Error).message},
+			}),
+		);
 		return;
 	}
 	zlog.info(`词条操作: ${message} termbase=${tb.termbaseId} entries=${tb.entries.length}`);
@@ -371,17 +404,25 @@ async function createTermbase(): Promise<void> {
 	if (!win) {
 		return;
 	}
-	const name = promptText("新建术语库", "术语库名称（如 NLP EN-ZH）", "NLP EN-ZH");
+	const name = promptText(
+		getString("tb-new-title"),
+		getString("tb-new-name-prompt"),
+		"NLP EN-ZH",
+	);
 	if (name === null) {
 		return;
 	}
-	const languages = promptText("新建术语库", "源语言,目标语言（如 en,zh）", "en,zh");
+	const languages = promptText(
+		getString("tb-new-title"),
+		getString("tb-pair-prompt"),
+		"en,zh",
+	);
 	if (languages === null) {
 		return;
 	}
 	const [source, target] = languages.split(",").map((s) => s.trim());
 	if (!source || !target || source === target) {
-		alertUser("新建术语库", "语言对格式应为“源,目标”（如 en,zh-CN）");
+		alertUser(getString("tb-new-title"), getString("tb-new-pair-invalid"));
 		return;
 	}
 	const now = Date.now();
@@ -398,14 +439,18 @@ async function createTermbase(): Promise<void> {
 	try {
 		await saveTermbase(termbase);
 	} catch (error) {
-		setStatusMessage(`新建失败: ${(error as Error).message}`);
+		setStatusMessage(
+			getString("tb-msg-create-failed", {
+				args: {detail: (error as Error).message},
+			}),
+		);
 		return;
 	}
 	zlog.info(`术语库已新建: ${termbase.termbaseId} (${termbase.sourceLanguage}→${termbase.targetLanguage})`);
 	selectedId = termbase.termbaseId;
 	setActiveTermbase(selectedId);
 	await refreshTermbases();
-	setStatusMessage("已新建术语库");
+	setStatusMessage(getString("tb-msg-created"));
 }
 
 async function removeTermbase(): Promise<void> {
@@ -416,7 +461,7 @@ async function removeTermbase(): Promise<void> {
 	if (!tb) {
 		return;
 	}
-	if (!confirmUser(`确定删除术语库“${tb.name}”？（文件将被移除）`)) {
+	if (!confirmUser(getString("tb-confirm-delete", {args: {name: tb.name}}))) {
 		return;
 	}
 	await deleteTermbase(tb.termbaseId);
@@ -427,7 +472,7 @@ async function removeTermbase(): Promise<void> {
 	selectedId = null;
 	editingConceptId = null;
 	await refreshTermbases();
-	setStatusMessage("已删除术语库");
+	setStatusMessage(getString("tb-msg-deleted"));
 }
 
 /** Lazily load Zotero's own FilePicker wrapper (version-adaptive: it handles
@@ -458,9 +503,9 @@ function pickFile(title: string, save: boolean, defaultName: string): Promise<st
 			fp.init(win, title, save ? fp.modeSave : fp.modeOpen);
 			if (save) {
 				fp.defaultString = defaultName;
-				fp.appendFilter("JSON 术语库", "*.json");
+				fp.appendFilter(getString("tb-filter-json"), "*.json");
 			} else {
-				fp.appendFilter("术语库文件", "*.tsv;*.csv;*.txt;*.json;*.tbx;*.xml");
+				fp.appendFilter(getString("tb-filter-all"), "*.tsv;*.csv;*.txt;*.json;*.tbx;*.xml");
 			}
 			fp.show()
 				.then((ret: number) => {
@@ -481,7 +526,7 @@ function pickFile(title: string, save: boolean, defaultName: string): Promise<st
 }
 
 async function importTermbase(): Promise<void> {
-	const file = await pickFile("导入术语库", false, "");
+	const file = await pickFile(getString("tb-import-title"), false, "");
 	if (!file) {
 		return;
 	}
@@ -498,14 +543,16 @@ async function importTermbase(): Promise<void> {
 			const issues = validateTermbase(termbase);
 			if (issues.length) {
 				alertUser(
-					"导入术语库",
-					`JSON 校验失败：\n${issues.slice(0, 6).join("\n")}`,
+					getString("tb-import-title"),
+					getString("tb-import-json-invalid", {
+						args: {detail: issues.slice(0, 6).join("\n")},
+					}),
 				);
 				return;
 			}
 		} else if (lower.endsWith(".tbx") || lower.endsWith(".xml")) {
 			// TBX has no language-pair concept; ask for the pair once.
-			const name = fileName.replace(/\.(tbx|xml)$/i, "") || "Imported";
+			const name = fileName.replace(/\.(tbx|xml)$/i, "") || getString("tb-import-default-name");
 			const pair = promptTermbasePair();
 			if (pair === null) {
 				return;
@@ -517,17 +564,17 @@ async function importTermbase(): Promise<void> {
 				targetLanguage: pair.target,
 			});
 			if (!termbase.entries.length) {
-				alertUser("导入术语库", "TBX 中未解析到任何 termEntry");
+				alertUser(getString("tb-import-title"), getString("tb-import-tbx-empty"));
 				return;
 			}
 		} else {
 			// TSV / CSV / TXT with delimiter auto-detection.
 			const rows = parseDelimited(content);
 			if (!rows.length) {
-				alertUser("导入术语库", "未解析到任何术语行（支持 TSV/CSV/TXT）");
+				alertUser(getString("tb-import-title"), getString("tb-import-rows-empty"));
 				return;
 			}
-			const name = fileName.replace(/\.(tsv|csv|txt)$/i, "") || "Imported";
+			const name = fileName.replace(/\.(tsv|csv|txt)$/i, "") || getString("tb-import-default-name");
 			const pair = promptTermbasePair();
 			if (pair === null) {
 				return;
@@ -545,9 +592,15 @@ async function importTermbase(): Promise<void> {
 		setActiveTermbase(selectedId);
 		editingConceptId = null;
 		await refreshTermbases();
-		setStatusMessage(`已导入 ${termbase.entries.length} 个词条`);
+		setStatusMessage(
+			getString("tb-msg-imported", {args: {count: termbase.entries.length}}),
+		);
 	} catch (error) {
-		setStatusMessage(`导入失败: ${(error as Error).message}`);
+		setStatusMessage(
+			getString("tb-msg-import-failed", {
+				args: {detail: (error as Error).message},
+			}),
+		);
 	}
 }
 
@@ -556,16 +609,20 @@ async function exportTermbaseTbx(): Promise<void> {
 	if (!tb) {
 		return;
 	}
-	const file = await pickFile("导出术语库 (TBX)", true, `${tb.termbaseId}.tbx`);
+	const file = await pickFile(getString("tb-export-tbx-title"), true, `${tb.termbaseId}.tbx`);
 	if (!file) {
 		return;
 	}
 	try {
 		await (Zotero.File as any).putContentsAsync(file, toTbx(tb));
 		zlog.info(`术语库已导出 TBX: ${tb.termbaseId} → ${file}`);
-		setStatusMessage("已导出 TBX");
+		setStatusMessage(getString("tb-msg-exported-tbx"));
 	} catch (error) {
-		setStatusMessage(`导出失败: ${(error as Error).message}`);
+		setStatusMessage(
+			getString("tb-msg-export-failed", {
+				args: {detail: (error as Error).message},
+			}),
+		);
 	}
 }
 
@@ -574,16 +631,20 @@ async function exportTermbase(): Promise<void> {
 	if (!tb) {
 		return;
 	}
-	const file = await pickFile("导出术语库", true, `${tb.termbaseId}.json`);
+	const file = await pickFile(getString("tb-export-title"), true, `${tb.termbaseId}.json`);
 	if (!file) {
 		return;
 	}
 	try {
 		await (Zotero.File as any).putContentsAsync(file, toJson(tb));
 		zlog.info(`术语库已导出 JSON: ${tb.termbaseId} → ${file}`);
-		setStatusMessage("已导出 JSON");
+		setStatusMessage(getString("tb-msg-exported-json"));
 	} catch (error) {
-		setStatusMessage(`导出失败: ${(error as Error).message}`);
+		setStatusMessage(
+			getString("tb-msg-export-failed", {
+				args: {detail: (error as Error).message},
+			}),
+		);
 	}
 }
 
@@ -592,8 +653,8 @@ async function exportTermbase(): Promise<void> {
 /** Ask for "source,target" (e.g. en,zh-CN); null on cancel/invalid. */
 function promptTermbasePair(): {source: string; target: string} | null {
 	const languages = promptText(
-		"导入术语库",
-		"源语言,目标语言（如 en,zh）",
+		getString("tb-import-title"),
+		getString("tb-pair-prompt"),
 		"en,zh",
 	);
 	if (languages === null) {
@@ -601,7 +662,7 @@ function promptTermbasePair(): {source: string; target: string} | null {
 	}
 	const [source, target] = languages.split(",").map((s) => s.trim());
 	if (!source || !target || source === target) {
-		alertUser("导入术语库", "语言对格式应为“源,目标”");
+		alertUser(getString("tb-import-title"), getString("tb-import-pair-invalid"));
 		return null;
 	}
 	return {source, target};
@@ -661,8 +722,14 @@ function bindEvents(): void {
 	get("zctr-termbase-import")?.addEventListener("click", () => void importTermbase());
 	get("zctr-termbase-refresh")?.addEventListener("click", () => {
 		void refreshTermbases()
-			.then(() => setStatusMessage("已从磁盘刷新术语库"))
-			.catch((error) => setStatusMessage(`刷新失败: ${(error as Error).message}`));
+			.then(() => setStatusMessage(getString("tb-msg-refreshed")))
+			.catch((error) =>
+				setStatusMessage(
+					getString("tb-msg-refresh-failed", {
+						args: {detail: (error as Error).message},
+					}),
+				),
+			);
 	});
 	get("zctr-termbase-export")?.addEventListener("click", () => void exportTermbase());
 	get("zctr-termbase-export-tbx")?.addEventListener("click", () => void exportTermbaseTbx());

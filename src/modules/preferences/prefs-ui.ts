@@ -14,7 +14,7 @@
 import {
 	DEEPSEEK_MODELS,
 	generateProviderId,
-	PROVIDER_TYPE_LABELS,
+	PROVIDER_TYPE_LABEL_IDS,
 	PROVIDER_TYPES,
 	type ProviderConfig,
 	type ProviderType,
@@ -36,6 +36,8 @@ import {
 } from "../runtime/runtime-config";
 import {parseShortcut, serializeShortcut} from "../../utils/shortcut";
 import {setLogLevel} from "../../utils/logger";
+import {getString} from "../../utils/locale";
+import type {FluentMessageId} from "../../../typings/i10n";
 import {providerForms} from "./forms";
 import {registerTermbaseScripts} from "./termbase-ui";
 import {
@@ -66,6 +68,7 @@ export async function registerPrefsScripts(window: Window): Promise<void> {
 	doc = window.document;
 	editingId = null;
 	initFormEnv(window);
+	applyPlaceholders();
 
 	renderProviderList();
 	bindButtons();
@@ -87,6 +90,35 @@ export async function registerPrefsScripts(window: Window): Promise<void> {
 	);
 }
 
+/**
+ * Apply the static placeholder texts. They are set from JavaScript rather than
+ * through data-l10n-id + data-l10n-attrs: attribute localization behaves less
+ * predictably inside the preference pane, and keeping them here groups every
+ * placeholder in one place.
+ */
+function applyPlaceholders(): void {
+	if (!doc) {
+		return;
+	}
+	const setPlaceholder = (elementId: string, messageId: FluentMessageId): void => {
+		const el = doc?.getElementById(elementId) as HTMLInputElement | null;
+		if (el) {
+			el.placeholder = getString(messageId);
+		}
+	};
+	setPlaceholder("zctr-input-name", "pref-placeholder-provider-name");
+	setPlaceholder("zctr-input-model", "pref-placeholder-model");
+	setPlaceholder("zctr-input-shortcut", "pref-placeholder-shortcut");
+	setPlaceholder("zctr-termbase-search", "pref-termbase-search-placeholder");
+	for (const id of [
+		"zctr-input-top-p",
+		"zctr-input-top-k",
+		"zctr-input-rep-penalty",
+	]) {
+		setPlaceholder(id, "pref-placeholder-default");
+	}
+}
+
 function getActiveId(): string {
 	return (getPref(PREFS.ACTIVE_PROVIDER_ID) as string) || "";
 }
@@ -105,7 +137,7 @@ function renderProviderList(): void {
 		container.append(
 			hEl(
 				"div",
-				"暂无供应商，点击下方“添加供应商”开始配置。",
+				getString("pref-provider-empty"),
 				"padding: 8px; color: #888; font-size: 12px;",
 			),
 		);
@@ -126,13 +158,16 @@ function renderProviderList(): void {
 				: "",
 			editingId === provider.id ? "outline: 1px solid var(--fill-tertiary, #aaa);" : "",
 		].join("; "));
-		const typeLabel = PROVIDER_TYPE_LABELS[provider.type] || provider.type;
+		const typeLabel = providerTypeLabel(provider.type);
 		const name = hEl(
 			"span",
 			`${provider.name} - ${typeLabel}`,
 			"overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
 		);
-		const mark = hEl("span", provider.id === activeId ? "● 激活" : "");
+		const mark = hEl(
+			"span",
+			provider.id === activeId ? getString("pref-provider-active") : "",
+		);
 		mark.style.cssText = "font-size: 11px; color: #2f7cde; margin-left: 6px; flex-shrink: 0;";
 		item.append(name, mark);
 
@@ -179,7 +214,7 @@ function validateForm(): ProviderConfig | null {
 		?.value as ProviderType;
 	const name = inputValue("zctr-input-name").trim();
 	if (!name) {
-		win?.alert("名称不能为空。");
+		win?.alert(getString("pref-error-name-required"));
 		return null;
 	}
 	const base: ProviderConfig = {
@@ -266,7 +301,7 @@ function bindGlobalSettings(): void {
 		for (const lang of TARGET_LANGUAGES) {
 			const option = doc.createElementNS(XHTML_NS, "option") as HTMLOptionElement;
 			option.value = lang.code;
-			option.textContent = lang.label;
+			option.textContent = getString(lang.labelId);
 			langSelect.append(option);
 		}
 		const current = (getPref(PREFS.TARGET_LANG) as string) || "zh";
@@ -301,7 +336,7 @@ function bindGlobalSettings(): void {
 					shortcut &&
 					!(shortcut.ctrl || shortcut.alt || shortcut.shift || shortcut.meta)
 				) {
-					win?.alert("快捷键需要包含至少一个修饰键（Ctrl / Alt / Shift / ⌘）。");
+					win?.alert(getString("pref-error-shortcut-modifier"));
 					return;
 				}
 				shortcutInput.value = combo;
@@ -458,12 +493,18 @@ const CONTEXT_LEVEL_TOGGLES: Array<{
 	},
 ];
 
-const CONTEXT_LEVEL_HINTS: Record<ContextLevel, string> = {
-	selection: "仅选段，不附加任何上下文",
-	local: "含句 + 当前段 + 小节标题 (+ 相邻段)",
-	semantic: "含句 + 当前段 + 小节标题 + 条目标题 + 摘要",
-	adaptive: "含句 + 当前段 + 小节标题 (+ 条目标题 + 摘要)",
+const CONTEXT_LEVEL_HINTS: Record<ContextLevel, FluentMessageId> = {
+	selection: "pref-context-level-selection",
+	local: "pref-context-level-local",
+	semantic: "pref-context-level-semantic",
+	adaptive: "pref-context-level-adaptive",
 };
+
+/** Localized label of a provider type (falls back to the raw type value). */
+function providerTypeLabel(type: ProviderType): string {
+	const id = PROVIDER_TYPE_LABEL_IDS[type];
+	return id ? getString(id) : type;
+}
 
 /**
  * Grey out the "包含…" toggles that do not apply to the currently selected
@@ -477,7 +518,8 @@ function updateContextLevelView(): void {
 	const level = ((getPref(PREFS.CONTEXT_LEVEL) as string) || "local") as ContextLevel;
 	const hint = doc.getElementById("zctr-context-level-hint") as HTMLElement | null;
 	if (hint) {
-		hint.textContent = CONTEXT_LEVEL_HINTS[level] ?? "";
+		const hintId = CONTEXT_LEVEL_HINTS[level];
+		hint.textContent = hintId ? getString(hintId) : "";
 	}
 	for (const toggle of CONTEXT_LEVEL_TOGGLES) {
 		const input = doc.getElementById(toggle.inputId) as HTMLInputElement | null;
@@ -607,7 +649,7 @@ function bindButtons(): void {
 			if (!options.some((o) => o.value === type)) {
 				const option = doc.createElementNS(XHTML_NS, "option") as HTMLOptionElement;
 				option.value = type;
-				option.textContent = PROVIDER_TYPE_LABELS[type];
+				option.textContent = providerTypeLabel(type);
 				typeSelect.append(option);
 			}
 		}

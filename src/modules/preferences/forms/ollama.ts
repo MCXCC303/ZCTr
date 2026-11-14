@@ -14,6 +14,7 @@ import {
 	type OllamaModelInfo,
 	testOllamaConnection,
 } from "../../provider/transport";
+import {getString} from "../../../utils/locale";
 
 const XHTML_NS = "http://www.w3.org/1999/xhtml";
 
@@ -45,10 +46,12 @@ function resetModelSelect(preferredModel?: string): void {
 	) as HTMLOptionElement;
 	if (preferredModel) {
 		option.value = preferredModel;
-		option.textContent = `${preferredModel}（已保存，请测试连接刷新）`;
+		option.textContent = getString("ollama-saved", {
+			args: {model: preferredModel},
+		});
 	} else {
 		option.value = "";
-		option.textContent = "请先测试连接";
+		option.textContent = getString("ollama-option-test-first");
 	}
 	select.append(option);
 	select.disabled = true;
@@ -74,7 +77,7 @@ function populateModelSelect(
 			"option",
 		) as HTMLOptionElement;
 		option.value = "";
-		option.textContent = "未检测到已安装的模型";
+		option.textContent = getString("ollama-option-no-models");
 		select.append(option);
 		select.disabled = true;
 		return;
@@ -106,7 +109,7 @@ async function testConnection(): Promise<void> {
 	}
 	const port = parseInt(inputValue("zctr-input-port") || "", 10);
 	const portValue = Number.isFinite(port) ? port : OLLAMA_DEFAULT_PORT;
-	status.textContent = "检测中…";
+	status.textContent = getString("ollama-testing");
 	status.style.color = "#888";
 	try {
 		const models = await testOllamaConnection(portValue);
@@ -121,14 +124,21 @@ async function testConnection(): Promise<void> {
 				.slice(0, 5)
 				.map((m) => (m.parameterSize ? `${m.name} (${m.parameterSize})` : m.name))
 				.join(", ");
-			status.textContent = `✓ 连接成功，检测到 ${models.length} 个模型：${names}${models.length > 5 ? "…" : ""}`;
+			status.textContent = getString("ollama-connected", {
+				args: {
+					count: models.length,
+					models: `${names}${models.length > 5 ? "…" : ""}`,
+				},
+			});
 		} else {
 			populateModelSelect([], undefined);
-			status.textContent = "✓ 连接成功（未检测到已安装的模型）";
+			status.textContent = getString("ollama-connected-empty");
 		}
 		status.style.color = "#2f7cde";
 	} catch (error) {
-		status.textContent = `✗ 连接失败：${(error as Error).message}`;
+		status.textContent = getString("ollama-failed", {
+			args: {detail: (error as Error).message},
+		});
 		status.style.color = "#c0392b";
 	}
 }
@@ -158,7 +168,7 @@ export const ollamaForm: ProviderForm = {
 		// populated it with the models of the local Ollama service
 		const model = selectValue("zctr-input-model-ollama").trim();
 		if (!model) {
-			getWin()?.alert("请先测试 Ollama 连接，然后选择模型。");
+			getWin()?.alert(getString("ollama-error-select-model"));
 			return null;
 		}
 		const port = parseInt(inputValue("zctr-input-port") || "", 10);

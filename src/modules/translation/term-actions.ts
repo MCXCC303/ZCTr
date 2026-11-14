@@ -67,6 +67,7 @@ import {
 import {toMatchKey} from "../terminology/matcher";
 import {languagesCompatible} from "../terminology/scope";
 import {listTermbases, loadTermbase, saveTermbase} from "../terminology/store";
+import {getString} from "../../utils/locale";
 
 export type CollectStatus = TermStatus;
 export const COLLECT_STATUSES: CollectStatus[] = [
@@ -161,13 +162,13 @@ export async function collectTerm(
 		return {
 			ok: false,
 			reason: "not-found",
-			message: "术语库不存在或无法读取，请重新打开收录窗口。",
+			message: getString("term-error-not-found"),
 		};
 	}
 	const source = payload.sourceText.trim();
 	const target = payload.targetText.trim();
 	if (!source || !target) {
-		return {ok: false, reason: "empty", message: "源术语与目标术语不能为空。"};
+		return {ok: false, reason: "empty", message: getString("term-error-empty")};
 	}
 
 	// Language-pair conflict -> refuse (entry would never match).
@@ -178,14 +179,26 @@ export async function collectTerm(
 		return {
 			ok: false,
 			reason: "pair-conflict",
-			message: `术语库语言对为 ${tb.sourceLanguage} → ${tb.targetLanguage}，与当前文档语言（${langs.docLanguage}）冲突：该词条的源术语永远不会被匹配到。请选择语言对匹配的术语库。`,
+			message: getString("term-error-doc-language", {
+				args: {
+					source: tb.sourceLanguage,
+					target: tb.targetLanguage,
+					docLang: langs.docLanguage,
+				},
+			}),
 		};
 	}
 	if (!languagesCompatible(tb.targetLanguage, langs.targetLanguage)) {
 		return {
 			ok: false,
 			reason: "pair-conflict",
-			message: `术语库语言对为 ${tb.sourceLanguage} → ${tb.targetLanguage}，与当前翻译目标语言（${langs.targetLanguage}）不匹配。请选择语言对匹配的术语库。`,
+			message: getString("term-error-target-language", {
+				args: {
+					source: tb.sourceLanguage,
+					target: tb.targetLanguage,
+					targetLang: langs.targetLanguage,
+				},
+			}),
 		};
 	}
 
@@ -201,7 +214,13 @@ export async function collectTerm(
 				return {
 					ok: false,
 					reason: "duplicate",
-					message: `源术语「${term.text}」已存在于术语库「${tb.name}」（词条 ${entry.conceptId}）。`,
+					message: getString("term-error-duplicate", {
+						args: {
+							term: term.text,
+							name: tb.name,
+							conceptId: entry.conceptId,
+						},
+					}),
 				};
 			}
 		}
@@ -245,7 +264,9 @@ export async function collectTerm(
 		return {
 			ok: false,
 			reason: "save-failed",
-			message: `保存失败：${(error as Error)?.message ?? String(error)}`,
+			message: getString("term-error-save", {
+				args: {detail: (error as Error)?.message ?? String(error)},
+			}),
 		};
 	}
 	return {ok: true, conceptId, termbaseName: tb.name};

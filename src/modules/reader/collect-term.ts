@@ -30,6 +30,7 @@
  * through ../translation/term-actions (reader -> translation -> terminology).
  */
 
+import {getString} from "../../utils/locale";
 import {getPref, PREFS} from "../../utils/prefs";
 import type {ReaderEntry} from "../../types/reader";
 import {
@@ -42,13 +43,15 @@ import {
 
 const XHTML_NS = "http://www.w3.org/1999/xhtml";
 
-const STATUS_LABELS: Record<string, string> = {
-	preferred: "Preferred",
-	admitted: "Admitted",
-	forbidden: "Forbidden",
-	deprecated: "Deprecated",
-};
-const STATUSES = ["preferred", "admitted", "forbidden", "deprecated"];
+/** Fluent ids of the status radio labels; resolved when the form is built so
+ * the plugin locale bundle is already initialized. */
+const STATUS_LABEL_IDS = {
+	preferred: "collect-status-preferred",
+	admitted: "collect-status-admitted",
+	forbidden: "collect-status-forbidden",
+	deprecated: "collect-status-deprecated",
+} as const;
+const STATUSES = ["preferred", "admitted", "forbidden", "deprecated"] as const;
 
 /** Theme colors resolved from the main Zotero window (the same tokens the
  * settings pane/popup use: --material-background, --fill-primary, ...). */
@@ -247,14 +250,20 @@ export async function openCollectTermDialog(
 		termbases = await listCollectableTermbases();
 	} catch (error) {
 		log("[ZCTr] 收录：加载术语库失败", error);
-		alert(parentWin, "收录术语", `加载术语库失败：${(error as Error)?.message}`);
+		alert(
+			parentWin,
+			getString("collect-title"),
+			getString("collect-error-load-termbases", {
+				args: {detail: (error as Error)?.message},
+			}),
+		);
 		return false;
 	}
 	if (!termbases.length) {
 		alert(
 			parentWin,
-			"收录术语",
-			"尚未创建任何术语库。请先新建或导入术语库。",
+			getString("collect-title"),
+			getString("collect-error-no-termbase"),
 		);
 		return false;
 	}
@@ -295,7 +304,11 @@ export async function openCollectTermDialog(
 			null as any,
 		) as unknown as Window | null;
 		if (!win) {
-			alert(parentWin, "收录术语", "无法打开收录窗口。");
+			alert(
+				parentWin,
+				getString("collect-title"),
+				getString("collect-error-open-window"),
+			);
 			finish(false);
 			return;
 		}
@@ -316,7 +329,13 @@ export async function openCollectTermDialog(
 				log("[ZCTr] 收录窗口已打开");
 			} catch (error) {
 				log("[ZCTr] 收录窗口构建失败:", error);
-				alert(win, "收录术语", `窗口初始化失败：${(error as Error)?.message}`);
+				alert(
+					win,
+					getString("collect-title"),
+					getString("collect-error-init-window", {
+						args: {detail: (error as Error)?.message},
+					}),
+				);
 				finish(false);
 			}
 		};
@@ -352,7 +371,7 @@ function buildCollectWindow(
 	},
 ): void {
 	const doc = win.document;
-	doc.title = "收录术语";
+	doc.title = getString("collect-title");
 
 	const style = doc.createElement("style");
 	style.textContent = buildFormCss(resolveThemeColors());
@@ -372,7 +391,7 @@ function buildCollectWindow(
 	// Section: termbase radio list
 	const section = el("div");
 	section.className = "section";
-	section.textContent = "术语库";
+	section.textContent = getString("collect-section-termbases");
 	root.append(section);
 
 	const tbList = el("div");
@@ -384,7 +403,14 @@ function buildCollectWindow(
 		radio.name = "zctr-tb";
 		radio.value = tb.termbaseId;
 		const span = el("span");
-		span.textContent = `${tb.name}（${tb.sourceLanguage} → ${tb.targetLanguage} · ${tb.entryCount} 词条）`;
+		span.textContent = getString("collect-termbase-option", {
+			args: {
+				name: tb.name,
+				source: tb.sourceLanguage,
+				target: tb.targetLanguage,
+				count: tb.entryCount,
+			},
+		});
 		row.append(radio, span);
 		tbList.append(row);
 	}
@@ -415,20 +441,20 @@ function buildCollectWindow(
 	const srcInput = el("input");
 	srcInput.type = "text";
 	srcInput.value = data.sourceText;
-	srcInput.placeholder = "源语言术语（默认取选中文本，可编辑）";
-	makeRow("源术语", srcInput);
+	srcInput.placeholder = getString("collect-field-source-placeholder");
+	makeRow(getString("collect-field-source"), srcInput);
 	const tgtInput = el("input");
 	tgtInput.type = "text";
 	tgtInput.value = data.targetText;
-	tgtInput.placeholder = "目标语言译文（默认取翻译结果，可编辑）";
-	makeRow("目标术语", tgtInput);
+	tgtInput.placeholder = getString("collect-field-target-placeholder");
+	makeRow(getString("collect-field-target"), tgtInput);
 
 	// Status radio group
 	const stRow = el("div");
 	stRow.className = "row";
 	const stLabel = el("label");
 	stLabel.className = "rowlabel";
-	stLabel.textContent = "状态";
+	stLabel.textContent = getString("collect-field-status");
 	const stGroup = el("div");
 	stGroup.id = "statusGroup";
 	for (const status of STATUSES) {
@@ -438,7 +464,7 @@ function buildCollectWindow(
 		radio.name = "zctr-status";
 		radio.value = status;
 		radio.checked = status === "preferred";
-		item.append(radio, STATUS_LABELS[status]);
+		item.append(radio, getString(STATUS_LABEL_IDS[status]));
 		stGroup.append(item);
 	}
 	stRow.append(stLabel, stGroup);
@@ -446,21 +472,20 @@ function buildCollectWindow(
 
 	const noteInput = el("input");
 	noteInput.type = "text";
-	noteInput.placeholder = "可选：如 用微调，不用精调";
-	makeRow("备注", noteInput);
+	noteInput.placeholder = getString("collect-field-note-placeholder");
+	makeRow(getString("collect-field-note"), noteInput);
 
 	// Footer hint
 	const footerHint = el("div");
 	footerHint.className = "hint";
-	footerHint.textContent =
-		"注：重复或语言对冲突的收录会被拒绝。";
+	footerHint.textContent = getString("collect-hint-footer");
 	root.append(footerHint);
 
 	// Buttons
 	const cancelBtn = el("button");
-	cancelBtn.textContent = "取消";
+	cancelBtn.textContent = getString("collect-button-cancel");
 	const collectBtn = el("button");
-	collectBtn.textContent = "收录";
+	collectBtn.textContent = getString("collect-button-collect");
 	footer.append(cancelBtn, collectBtn);
 
 	const byId = new Map(data.termbases.map((tb) => [tb.termbaseId, tb]));
@@ -472,8 +497,15 @@ function buildCollectWindow(
 		if (!tb) {
 			return;
 		}
-		pairHint.textContent = `语言对：${tb.sourceLanguage} → ${tb.targetLanguage}`;
-		langHint.textContent = `当前语境：文档语言 ${data.docLanguage ?? "未知"} · 翻译目标 ${data.targetLanguage}`;
+		pairHint.textContent = getString("collect-hint-language-pair", {
+			args: {source: tb.sourceLanguage, target: tb.targetLanguage},
+		});
+		langHint.textContent = getString("collect-hint-context", {
+			args: {
+				docLang: data.docLanguage ?? getString("collect-unknown"),
+				target: data.targetLanguage,
+			},
+		});
 	};
 	tbList.addEventListener("change", updateHints);
 	updateHints();
@@ -503,7 +535,7 @@ function buildCollectWindow(
 			log(
 				`[ZCTr] 收录被拒绝: reason=${res.reason} termbase=${checkedTermbaseId() || "(未选)"}`,
 			);
-			alert(win, "无法收录", res.message);
+			alert(win, getString("collect-alert-rejected"), res.message);
 			return;
 		}
 		log(`[ZCTr] 术语已收录: ${res.termbaseName} / ${res.conceptId}`);

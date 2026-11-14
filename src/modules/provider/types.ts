@@ -14,6 +14,8 @@
  * Security: apiKey is NOT stored in the providers pref (see credentials.ts).
  */
 
+import type {FluentMessageId} from "../../../typings/i10n";
+
 export type ProviderType = "openai" | "deepseek" | "ollama";
 
 export interface ProviderConfig {
@@ -32,10 +34,14 @@ export interface ProviderConfig {
 
 export const PROVIDER_TYPES: ProviderType[] = ["openai", "deepseek", "ollama"];
 
-export const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
-	openai: "OpenAI 兼容",
-	deepseek: "DeepSeek",
-	ollama: "Ollama",
+/**
+ * Fluent message ids for the provider-type labels (resolved with getString()
+ * from the UI; the build prefixes the ids with the addon ref).
+ */
+export const PROVIDER_TYPE_LABEL_IDS: Record<ProviderType, FluentMessageId> = {
+	openai: "provider-type-openai",
+	deepseek: "provider-type-deepseek",
+	ollama: "provider-type-ollama",
 };
 
 export const DEEPSEEK_BASE_URL = "https://api.deepseek.com";

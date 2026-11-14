@@ -8,8 +8,11 @@
  * language pair ({sourceLanguage, targetLanguage}) so cross-language-pair
  * terms never leak into a request.
  *
- * This module is intentionally dependency-free (pure TS).
+ * The data model is pure TS; only validateTermbase() formats its issues
+ * through the locale layer (getString).
  */
+
+import {getString} from "../../utils/locale";
 
 export type TermStatus = "preferred" | "admitted" | "forbidden" | "deprecated";
 
@@ -132,25 +135,25 @@ export function canonicalMatchedTermSet(
 export function validateTermbase(tb: Termbase): string[] {
 	const issues: string[] = [];
 	if (!tb.termbaseId) {
-		issues.push("termbaseId 不能为空");
+		issues.push(getString("termbase-error-id"));
 	}
 	if (!tb.sourceLanguage) {
-		issues.push("sourceLanguage 不能为空");
+		issues.push(getString("termbase-error-source-language"));
 	}
 	if (!tb.targetLanguage) {
-		issues.push("targetLanguage 不能为空");
+		issues.push(getString("termbase-error-target-language"));
 	}
 	if (tb.sourceLanguage === tb.targetLanguage) {
-		issues.push("sourceLanguage 与 targetLanguage 不能相同");
+		issues.push(getString("termbase-error-same-language"));
 	}
 	// entries MAY be empty: a brand-new termbase starts empty and is filled
 	// through the editor before it can match anything.
 	if (!Array.isArray(tb.entries)) {
-		issues.push("entries 必须是数组");
+		issues.push(getString("termbase-error-entries"));
 	}
 	for (const entry of tb.entries ?? []) {
 		if (!entry.conceptId) {
-			issues.push("词条缺少 conceptId");
+			issues.push(getString("termbase-error-concept-id"));
 		}
 		const sourceTerms = (entry.terms ?? []).filter(
 			(t) => t.language === tb.sourceLanguage,
@@ -160,12 +163,24 @@ export function validateTermbase(tb: Termbase): string[] {
 		);
 		if (!sourceTerms.length || !targetTerms.length) {
 			issues.push(
-				`词条 ${entry.conceptId || "(无 id)"} 缺少 ${tb.sourceLanguage} 或 ${tb.targetLanguage} 术语`,
+				getString("termbase-error-missing-pair", {
+					args: {
+						id: entry.conceptId || getString("termbase-error-no-id"),
+						source: tb.sourceLanguage,
+						target: tb.targetLanguage,
+					},
+				}),
 			);
 		}
 		for (const term of entry.terms ?? []) {
 			if (!term.termId || !term.text) {
-				issues.push(`词条 ${entry.conceptId || "(无 id)"} 存在空术语`);
+				issues.push(
+					getString("termbase-error-empty-term", {
+						args: {
+							id: entry.conceptId || getString("termbase-error-no-id"),
+						},
+					}),
+				);
 			}
 		}
 	}
