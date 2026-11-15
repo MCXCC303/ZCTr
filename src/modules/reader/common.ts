@@ -1,15 +1,3 @@
-/**
- * Reader integration shared helpers.
- *
- * The view menu, annotation menu and translation popup all operate on a
- * context menu event that carries a reader reference; the menu handlers
- * register a ReaderEntry (capturing the reader's document/iframe/itemID)
- * and the popup consumes it when the menu item is clicked.
- *
- * Structural types (ViewLike / ReaderLike / ContextMenuEvent / ReaderEntry)
- * live in src/types/reader.ts and are re-exported here for convenience.
- */
-
 export type {
 	ContextMenuEvent,
 	ReaderEntry,
@@ -24,14 +12,11 @@ import type {
 	ViewLike,
 } from "../../types/reader";
 
-/** Cap on stale registry entries (menus opened but never clicked). */
 const REGISTRY_LIMIT = 50;
 
-/** Registered readers, keyed by a numeric id captured in the menu closure. */
 const readerRegistry = new Map<number, ReaderEntry>();
 let readerIdCounter = 0;
 
-/** Register a reader entry and return its id for the menu closure. */
 export function registerReaderEntry(entry: ReaderEntry): number {
 	const id = ++readerIdCounter;
 	readerRegistry.set(id, entry);
@@ -41,7 +26,6 @@ export function registerReaderEntry(entry: ReaderEntry): number {
 	return id;
 }
 
-/** Take (and remove) a registered reader entry by id. */
 export function consumeReaderEntry(id: number): ReaderEntry | null {
 	const entry = readerRegistry.get(id);
 	readerRegistry.delete(id);
@@ -51,10 +35,6 @@ export function consumeReaderEntry(id: number): ReaderEntry | null {
 /** Longest source text sent to the provider. */
 export const MAX_SOURCE_LENGTH = 8000;
 
-/**
- * Extract the reader UI context (view, document, iframe window) from a
- * context menu event's reader reference. Null when the reader is not ready.
- */
 export function getReaderContext(
 	reader: ReaderLike | undefined,
 ): {view: ViewLike; doc: Document; iframeWin: Window} | null {
@@ -69,13 +49,8 @@ export function getReaderContext(
 }
 
 /**
- * Collect the current text selection from the focused reader view.
- *
- * Prefers the native browser selection on the pdf.js text layer. The reader
- * re-renders on right-click (`_handleContextMenu` calls `_render()`), which
- * rebuilds the text layer and clears the native selection, so fall back to
- * Zotero's logical selection ranges (`_selectionRanges`), which survive the
- * re-render and carry `text` per range.
+ * The reader re-renders on right-click (`_handleContextMenu` calls `_render()`),
+ * which clears the native selection; `_selectionRanges` survives it.
  */
 export function getSelectedText(view: ViewLike | undefined): string {
 	const win = view?._iframeWindow;
@@ -107,14 +82,13 @@ export function getSelectedText(view: ViewLike | undefined): string {
 	return "";
 }
 
-/** The event names accepted by Zotero.Reader.registerEventListener. */
 type ReaderEventType = Parameters<
 	typeof Zotero.Reader.registerEventListener
 >[0];
 
 /**
- * Register a Zotero.Reader event listener, guarding against duplicate
- * registration (e.g. when onStartup is re-run).
+ * Register a reader event listener. Duplicate detection relies on Zotero's
+ * private `_registeredListeners` list (there is no public query API).
  */
 export function registerReaderListener(
 	type: ReaderEventType,
@@ -139,7 +113,6 @@ export function registerReaderListener(
 	}
 }
 
-/** Unregister a Zotero.Reader event listener. */
 export function unregisterReaderListener(
 	type: ReaderEventType,
 	handler: (event: ContextMenuEvent) => void,
@@ -147,10 +120,6 @@ export function unregisterReaderListener(
 	Zotero.Reader?.unregisterEventListener?.(type, handler as never);
 }
 
-/**
- * Collect the text of annotations by their keys: each annotation contributes
- * its highlighted text plus its comment.
- */
 export function getAnnotationText(
 	reader: ReaderLike | undefined,
 	ids: string[] | undefined,

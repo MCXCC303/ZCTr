@@ -1,17 +1,3 @@
-/**
- * Translation pipeline - orchestrates one translation request
- * (ZCTr-modules-ARCHITECTURE.md §4): context assembly -> cache lookup ->
- * prompt building -> provider transport -> cache store.
- *
- * Phase 2/3 mount points (see the module spec):
- * - terminology injection sits between context assembly and prompt building;
- * - profile resolution sits at the pipeline entry (provider / runtime /
- *   context policy / terminology policy).
- *
- * The reader UI only consumes the returned handle; it never touches the
- * provider, cache or context internals.
- */
-
 import {getPref, PREFS} from "../../utils/prefs";
 import type {ReaderEntry} from "../../types/reader";
 import {getActiveProvider} from "../provider/registry";
@@ -35,24 +21,13 @@ import type {MatchedTermSet} from "../terminology/model";
 import * as zlog from "../../utils/logger";
 
 export interface TranslationHandle {
-	/** True when the result came from the local cache (no provider request). */
 	fromCache: boolean;
-	/** Whether the transport streams deltas (drives the popup UX). */
 	streaming: boolean;
-	/** Matched terms injected into this request (undefined when none). */
 	terminology?: MatchedTermSet;
-	/**
-	 * Start/continue the translation. With streaming, `onDelta` is called
-	 * for each chunk; always resolves with the full translation text.
-	 */
+	/** With streaming, `onDelta` fires per chunk; resolves with the full translation text. */
 	run: (onDelta?: (delta: string) => void) => Promise<string>;
 }
 
-/**
- * Start a translation for the reader entry. Returns null when no provider
- * is configured (the caller shows a setup hint). Never throws: context
- * failures degrade silently to a selection-only request.
- */
 export async function startTranslation(
 	entry: ReaderEntry,
 	text: string,
@@ -81,10 +56,6 @@ export async function startTranslation(
 		zlog.debug(`context attached: level=${context.policy.level} doc=${!!context.document} local=${!!context.local}`);
 	}
 
-	// Terminology matching (Phase 2): local, deterministic, zero network.
-	// Any failure degrades to no terminology - never blocks translation.
-	// Gated by two prefs: the termbase master switch and "包含术语"
-	// (independent of the context level).
 	const terminologyOn =
 		getPref(PREFS.TERMINOLOGY_ENABLED) !== false &&
 		getPref(PREFS.CONTEXT_INCLUDE_TERMINOLOGY) !== false;
@@ -94,9 +65,7 @@ export async function startTranslation(
 	} else {
 		try {
 			const termbases = await listTermbases();
-			// Restrict matching to the ACTIVE termbase (manager's "（激活）"
-			// selection) so unrelated glossaries cannot pollute scientific
-			// translations; unset -> all compatible termbases.
+			// Only the active termbase is matched; unset -> all compatible termbases.
 			const activeTermbaseId = ((getPref(PREFS.ACTIVE_TERMBASE_ID) as string) ||
 				null) as string | null;
 			terminology =
@@ -121,7 +90,6 @@ export async function startTranslation(
 		context,
 	);
 
-	// Local cache hit: serve instantly without a provider request
 	const cached = await translationCache.get(
 		entry.itemID,
 		request.text,
@@ -140,7 +108,6 @@ export async function startTranslation(
 		};
 	}
 
-	// Build messages once per request (Phase 2 injection lives here).
 	const messages = buildMessages(
 		request.text,
 		getTargetLanguageName(request.targetLang),
@@ -148,8 +115,7 @@ export async function startTranslation(
 		terminology,
 	);
 	const streaming = request.runtimeConfig.stream;
-	// Hard stop at the closing target marker: generation ends the moment the
-	// model emits it, so it cannot continue into the context blocks.
+	// Stop at the closing target marker so generation cannot continue into the context blocks.
 	const {close} = pickTargetMarkers(request.text);
 	const stop = [close];
 
@@ -172,8 +138,6 @@ export async function startTranslation(
 						request.runtimeConfig,
 						stop,
 					);
-			// Some models echo the target markers around the output; strip
-			// them before display and caching (see prompt.ts).
 			const full = stripTargetMarkers(raw, request.text);
 			if (full) {
 				void translationCache.put(

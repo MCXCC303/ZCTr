@@ -1,21 +1,3 @@
-/**
- * TBX mapping layer (architecture §11, P2 plan T4).
- *
- * ZCTr does NOT pretend its JSON model IS TBX: this module provides a
- * DOCUMENTED mapping to/from the ISO 30042 TBX exchange shape (martif /
- * termEntry / langSet / tig), sufficient for interop with terminology tools
- * and glossary workflows.
- *
- * Export: TBX-Basic-style martif. One <termEntry> per concept; one <langSet>
- * per language; one <tig> per term with a <termNote type="termStatus"> and
- * optional <termNote type="termVariant"> entries for variants.
- *
- * Import: regex-based extraction of the same subset (pure, dependency-free;
- * unknown elements/notes are ignored, invalid entries are skipped). This is
- * a best-effort mapping layer, not a TBX validator - full TBX conformance
- * is explicitly out of scope (architecture §11).
- */
-
 import {
 	TERMBASE_SCHEMA_VERSION,
 	type ConceptEntry,
@@ -53,7 +35,6 @@ function tigXml(term: Term, isVariant: boolean): string {
 	return lines.join("\n");
 }
 
-/** Export a termbase to a TBX-Basic-style martif document. */
 export function toTbx(termbase: Termbase): string {
 	const entries = termbase.entries
 		.map((entry) => {
@@ -136,10 +117,7 @@ function parseTigs(block: string): ParsedTig[] {
 	return tigs;
 }
 
-/**
- * Import a TBX martif document into the ZCTr model. `meta` supplies the
- * termbase identity and the language pair (TBX has no pair concept).
- */
+/** `meta` supplies the termbase identity and language pair; TBX has no pair concept. */
 export function parseTbx(
 	xml: string,
 	meta: {
@@ -173,7 +151,7 @@ export function parseTbx(
 					primary.push(tig);
 				}
 			}
-			// Primary terms first (the model requires ≥1 per pair language).
+			// The model requires ≥1 term in each language of the pair; primaries come first.
 			for (let i = 0; i < primary.length; i++) {
 				const t = primary[i];
 				terms.push({

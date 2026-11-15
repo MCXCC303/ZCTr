@@ -1,9 +1,6 @@
 import * as zlog from "../../utils/logger";
-/**
- * Provider credentials - API key storage in the Firefox login manager
- * (NSS-encrypted), keyed by provider id. Keys never enter the providers pref,
- * Profile/Termbase exports or settings persistence.
- */
+
+// API keys live in the Firefox login manager only, never in prefs or exports.
 
 const KEY_HOST = "https://zctr.local";
 const KEY_PREFIX = "zctr:";
@@ -21,15 +18,12 @@ function describeError(error: unknown): string {
 
 /**
  * Store (or remove, when empty) a provider's API key.
- *
- * Firefox 137+ replaced `nsILoginManager.addLogin` with the async
- * `addLoginAsync`; Zotero 9 runs on such a build.
+ * Firefox 137+ replaced `nsILoginManager.addLogin` with `addLoginAsync`.
  */
 export async function setProviderApiKey(
 	providerId: string,
 	apiKey: string,
 ): Promise<void> {
-	// Remove any previous value for this provider
 	try {
 		const existing = Services.logins.findLogins(KEY_HOST, "", "");
 		for (const login of existing) {
@@ -45,10 +39,6 @@ export async function setProviderApiKey(
 		return;
 	}
 
-	// Build the login by setting properties directly - nsILoginInfo.init()
-	// argument mapping is unreliable on Firefox 140, and LoginHelper's
-	// LoginInfo class is not exported. _checkLogin requires exactly one of
-	// formActionOrigin/httpRealm to be "" and the other to be null.
 	const login = Cc["@mozilla.org/login-manager/loginInfo;1"].createInstance(
 		Ci.nsILoginInfo,
 	);
@@ -69,7 +59,6 @@ export async function setProviderApiKey(
 	}
 }
 
-/** Read a provider's API key from the login manager. */
 export function getProviderApiKey(providerId: string): string {
 	try {
 		const logins = Services.logins.findLogins(KEY_HOST, "", "");

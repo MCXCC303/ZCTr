@@ -1,15 +1,3 @@
-/**
- * SectionTitleProvider - best-effort section title from the reader's PDF
- * outline (bookmarks). Mirrors Zotero's own getOutlinePath semantics: the
- * deepest outline item whose page index is <= the current page.
- *
- * `view._outline` items look like:
- *   { title, items?: [...], location?: { position?: { pageIndex } } }
- * and may be absent until the outline is loaded - in that case we trigger
- * the reader's internal `_initNativeOutline()` once and await it. Any
- * failure degrades to no section title.
- */
-
 import type {ViewLike} from "../../../types/reader";
 import * as zlog from "../../../utils/logger";
 
@@ -21,7 +9,6 @@ interface OutlineNode {
 	pageIndex?: number;
 }
 
-/** Pure: deepest outline node whose page <= pageIndex (title, or undefined). */
 export function findDeepestOutlineTitle(
 	outline: OutlineNode[] | undefined | null,
 	pageIndex: number,
@@ -57,7 +44,6 @@ export function findDeepestOutlineTitle(
 	return bestTitle;
 }
 
-/** View wrapper: lazily load the outline if needed, then find the title. */
 export async function getSectionTitle(
 	view: ViewLike | undefined,
 	pageIndex: number,
@@ -69,7 +55,7 @@ export async function getSectionTitle(
 			try {
 				await v._initNativeOutline();
 			} catch {
-				// Outline loading failed; keep whatever we have
+				// Outline load failed; keep what we have.
 			}
 			outline = v?._outline;
 		}

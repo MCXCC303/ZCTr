@@ -1,16 +1,3 @@
-/**
- * ZCTr preferences pane - orchestration.
- *
- * The pane skeleton lives in addon/content/preferences.xhtml and calls
- * Zotero.ZCTr.hooks.onPrefsEvent('load', { window }) on load; this module
- * renders the provider list, binds the buttons and orchestrates the shared
- * form fields (name, type, API key).
- *
- * Each provider type owns its type-specific fields via a ProviderForm
- * (see forms/): openai (Base URL + model), deepseek (model dropdown),
- * ollama (port + model dropdown + connectivity test).
- */
-
 import {
 	DEEPSEEK_MODELS,
 	generateProviderId,
@@ -57,10 +44,6 @@ let doc: Document | null = null;
 /** Provider id currently being edited; null means "new provider" mode. */
 let editingId: string | null = null;
 
-/**
- * Context level union, kept local to the preferences layer so it does not
- * depend on the context engine module (see ZCTr-modules-ARCHITECTURE.md §2).
- */
 type ContextLevel = "selection" | "local" | "semantic" | "adaptive";
 
 export async function registerPrefsScripts(window: Window): Promise<void> {
@@ -90,12 +73,6 @@ export async function registerPrefsScripts(window: Window): Promise<void> {
 	);
 }
 
-/**
- * Apply the static placeholder texts. They are set from JavaScript rather than
- * through data-l10n-id + data-l10n-attrs: attribute localization behaves less
- * predictably inside the preference pane, and keeping them here groups every
- * placeholder in one place.
- */
 function applyPlaceholders(): void {
 	if (!doc) {
 		return;
@@ -180,7 +157,6 @@ function renderProviderList(): void {
 	}
 }
 
-/** Show/hide the shared fields and delegate to the type's form. */
 function updateFormVisibility(type: ProviderType): void {
 	for (const [formType, form] of Object.entries(providerForms) as [
 		ProviderType,
@@ -225,7 +201,6 @@ function validateForm(): ProviderConfig | null {
 	return providerForms[type].validate(base);
 }
 
-/** Store the API key in the login manager, then persist the provider. */
 async function persistProvider(provider: ProviderConfig): Promise<void> {
 	await setProviderApiKey(provider.id, provider.apiKey || "");
 	const providers = getProviders();
@@ -248,7 +223,6 @@ async function saveCurrent(): Promise<void> {
 	}
 	await persistProvider(provider);
 
-	// Auto-activate the first provider if none is active yet
 	const providers = getProviders();
 	if (!getActiveId() && providers.length) {
 		setActiveProvider(providers[0].id);
@@ -287,13 +261,10 @@ function deleteCurrent(): void {
 	renderProviderList();
 }
 
-/** Bind the global translation settings (target language, streaming toggle). */
 function bindGlobalSettings(): void {
 	if (!doc) {
 		return;
 	}
-	// Target language dropdown: populated from TARGET_LANGUAGES, saved on
-	// change (no separate save button)
 	const langSelect = doc.getElementById(
 		"zctr-input-targetlang",
 	) as HTMLSelectElement | null;
@@ -313,7 +284,6 @@ function bindGlobalSettings(): void {
 		});
 	}
 
-	// Translate hotkey: click the input, then press the combo (Esc clears)
 	const shortcutInput = doc.getElementById(
 		"zctr-input-shortcut",
 	) as HTMLInputElement | null;
@@ -329,8 +299,6 @@ function bindGlobalSettings(): void {
 			}
 			const combo = serializeShortcut(event);
 			if (combo) {
-				// A modifier key is required: a modifier-less combo would fire
-				// while typing in editable fields (comments, find box)
 				const shortcut = parseShortcut(combo);
 				if (
 					shortcut &&
@@ -355,7 +323,6 @@ function bindGlobalSettings(): void {
 		});
 	}
 
-	// Persisted cache toggle
 	const cachePersistInput = doc.getElementById(
 		"zctr-input-cache-persist",
 	) as HTMLInputElement | null;
@@ -366,8 +333,7 @@ function bindGlobalSettings(): void {
 		});
 	}
 
-	// Cache queue lengths (-1 means unlimited). Memory and persisted queues
-	// have independent limits.
+	// -1 = unlimited; the memory and persisted queues have independent limits.
 	const bindCacheLimit = (inputId: string, prefKey: PrefKey, fallback: number): void => {
 		const input = doc?.getElementById(inputId) as HTMLInputElement | null;
 		if (!input) {
@@ -392,10 +358,6 @@ function bindGlobalSettings(): void {
 	bindLogSettings();
 }
 
-/**
- * Bind the "上下文" (translation context) settings: level dropdown and the
- * four injection toggles. Saved immediately on change.
- */
 function bindContextSettings(): void {
 	if (!doc) {
 		return;
@@ -431,19 +393,15 @@ function bindContextSettings(): void {
 		"zctr-input-context-adjacent",
 		PREFS.CONTEXT_INCLUDE_ADJACENT_PARAGRAPHS,
 	);
-	// "包含术语" - independent of the context level (never greyed out):
-	// terminology is not a context layer, it is a separate injection input.
 	bindCheckbox(
 		"zctr-input-context-terminology",
 		PREFS.CONTEXT_INCLUDE_TERMINOLOGY,
 	);
-	// Master switch for termbase matching/injection (术语表 section).
 	bindCheckbox("zctr-input-termbase-enabled", PREFS.TERMINOLOGY_ENABLED);
 
 	updateContextLevelView();
 }
 
-/** Bind the log-level select (applies immediately; no restart needed). */
 function bindLogSettings(): void {
 	if (!doc) {
 		return;
@@ -465,7 +423,6 @@ function bindLogSettings(): void {
 	});
 }
 
-/** Context level -> which "包含…" toggles are effective. */
 const CONTEXT_LEVEL_TOGGLES: Array<{
 	inputId: string;
 	prefKey: PrefKey;
@@ -500,17 +457,11 @@ const CONTEXT_LEVEL_HINTS: Record<ContextLevel, FluentMessageId> = {
 	adaptive: "pref-context-level-adaptive",
 };
 
-/** Localized label of a provider type (falls back to the raw type value). */
 function providerTypeLabel(type: ProviderType): string {
 	const id = PROVIDER_TYPE_LABEL_IDS[type];
 	return id ? getString(id) : type;
 }
 
-/**
- * Grey out the "包含…" toggles that do not apply to the currently selected
- * context level, and update the per-level hint. This prevents the confusion
- * of a checked-but-ineffective setting (e.g. "包含 Abstract" at Local level).
- */
 function updateContextLevelView(): void {
 	if (!doc) {
 		return;
@@ -535,11 +486,6 @@ function updateContextLevelView(): void {
 	}
 }
 
-/**
- * Bind the "生成参数" (runtime inference parameters) inputs. Empty optional
- * fields mean "not sent - provider default"; invalid values are rejected and
- * the input reverts to the current stored value.
- */
 function bindGenerationParams(): void {
 	if (!doc) {
 		return;
@@ -622,19 +568,14 @@ function bindButtons(): void {
 	doc.getElementById("zctr-btn-active")?.addEventListener("click", setActiveCurrent);
 	doc.getElementById("zctr-btn-delete")?.addEventListener("click", deleteCurrent);
 
-	// Delegate per-type field events (e.g. the Ollama connectivity test)
 	for (const form of Object.values(providerForms)) {
 		form.bindEvents();
 	}
 
-	// Type switch: adapt the form fields
 	const typeSelect = doc.getElementById("zctr-input-type") as HTMLSelectElement | null;
 	if (typeSelect) {
 		typeSelect.addEventListener("change", () => {
 			const type = typeSelect.value as ProviderType;
-			// Reset every type's fields, then show the selected type's form.
-			// The shared name and API key fields are kept so switching types
-			// does not lose what the user already typed.
 			for (const form of Object.values(providerForms)) {
 				form.reset();
 			}
@@ -642,7 +583,6 @@ function bindButtons(): void {
 		});
 	}
 
-	// Keep the type list in sync with PROVIDER_TYPES
 	if (typeSelect) {
 		const options = [...(typeSelect.options as unknown as HTMLOptionElement[])];
 		for (const type of PROVIDER_TYPES) {

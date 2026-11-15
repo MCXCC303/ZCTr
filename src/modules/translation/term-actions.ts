@@ -1,38 +1,3 @@
-/**
- * Term-collect actions - the write side of the "+ 收录" closed loop
- * (popup selection/translation -> termbase). Lives behind the translation
- * layer so the reader UI never touches the terminology store directly
- * (ZCTr-modules-ARCHITECTURE.md: reader -> translation -> terminology).
- *
- * Refusal policy (user-confirmed strategy, v1):
- * - language-pair conflict: the chosen termbase pair must be compatible
- *   with the document language (source side) and the translation target
- *   language (target side). A mismatched pair would make the entry dead
- *   data (the matcher only looks at terms in the termbase's own languages),
- *   so the add is REFUSED with an explanatory alert;
- * - duplicate source term (normalized, in the termbase's source language):
- *   REFUSED - edits belong to the termbase manager.
- *
- * Selection pre-filter (isCollectableTermText): a term is short by nature -
- * term-extraction statistics put ~90% of terms at 1-4 words and essentially
- * all glossary entries below 8 words; CJK terms (no word boundaries) run
- * 2-6 characters with long technical terms rarely exceeding ~15. Selections
- * beyond those ranges are sentences, not terms, and the "+ 收录" option is
- * withheld entirely (the popup footer does not render).
- */
-
-/**
- * Length pre-filter for a term candidate. True only for text that can
- * plausibly BE a term; sentences/paragraphs are rejected so the collect
- * option never appears for them.
- *
- * Rejection rules (tunable):
- * - contains a line break (terms never span lines);
- * - > MAX_TERM_WORDS whitespace-separated words (space-delimited languages);
- * - > MAX_TERM_CHARS characters (long phrases);
- * - a whitespace-free CJK run > MAX_CJK_TERM_CHARS characters (Chinese/
- *   Japanese sentences have no spaces, so the char count is the only bound).
- */
 export const MAX_TERM_WORDS = 8;
 export const MAX_TERM_CHARS = 60;
 export const MAX_CJK_TERM_CHARS = 24;
@@ -49,7 +14,6 @@ export function isCollectableTermText(text: string): boolean {
 	const cjkCount = (trimmed.match(CJK_RE) ?? []).length;
 	const hasSpaces = /\s/.test(trimmed);
 	if (!hasSpaces && cjkCount > 0) {
-		// CJK run without word boundaries: judge by character count only.
 		return trimmed.length <= MAX_CJK_TERM_CHARS;
 	}
 	const words = trimmed.split(/\s+/).length;
@@ -77,8 +41,6 @@ export const COLLECT_STATUSES: CollectStatus[] = [
 	"deprecated",
 ];
 
-/** Neutral termbase descriptor for the collect form (no model types leak
- * into the reader UI). */
 export interface CollectableTermbase {
 	termbaseId: string;
 	name: string;
@@ -87,11 +49,8 @@ export interface CollectableTermbase {
 	entryCount: number;
 }
 
-/** Language facts of the request the term came from. */
 export interface CollectContextLanguages {
-	/** Document language from item metadata; undefined when unknown. */
 	docLanguage?: string;
-	/** Translation target language code (always known from prefs). */
 	targetLanguage: string;
 }
 
@@ -112,7 +71,6 @@ export type CollectResult =
 			message: string;
 	  };
 
-/** All termbases the collect form can offer (manager order). */
 export async function listCollectableTermbases(): Promise<CollectableTermbase[]> {
 	const termbases = await listTermbases();
 	return termbases.map((tb) => ({
@@ -124,12 +82,6 @@ export async function listCollectableTermbases(): Promise<CollectableTermbase[]>
 	}));
 }
 
-/**
- * Default termbase for the collect form (minimal-bridging policy):
- * the active termbase (termbase manager selection) when it exists, else the
- * first termbase whose target language is compatible with the translation
- * target, else the first one. The user can always pick another one.
- */
 export function pickDefaultCollectTermbaseId(
 	termbases: CollectableTermbase[],
 	opts: {activeId: string | null; targetLanguage: string},
@@ -149,10 +101,6 @@ export function pickDefaultCollectTermbaseId(
 	return effective?.termbaseId ?? termbases[0].termbaseId;
 }
 
-/**
- * Validate and persist one collected term. Never throws: every failure is
- * returned as a structured refusal with a user-ready message.
- */
 export async function collectTerm(
 	payload: CollectPayload,
 	langs: CollectContextLanguages,
@@ -202,8 +150,6 @@ export async function collectTerm(
 		};
 	}
 
-	// Duplicate source term (normalized) -> refuse; edits belong to the
-	// termbase manager (variants / status changes would pollute matching).
 	const needle = toMatchKey(source);
 	for (const entry of tb.entries ?? []) {
 		for (const term of entry.terms ?? []) {
@@ -226,9 +172,6 @@ export async function collectTerm(
 		}
 	}
 
-	// Same entry shape as the termbase manager's editor (see termbase-ui.ts
-	// formConcept): one concept, two terms tagged with the termbase's own
-	// language codes.
 	const conceptId = `c-${Date.now().toString(36)}${Math.random()
 		.toString(36)
 		.slice(2, 6)}`;

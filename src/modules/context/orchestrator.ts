@@ -1,22 +1,3 @@
-/**
- * ContextOrchestrator - assembles the TranslationContext for one translation
- * request (ZCTr-context-ARCHITECTURE.md §8).
- *
- * Responsibilities (M1): collect available context, apply the selected
- * policy level, cap by budget and output a stable TranslationContext.
- * It does NOT touch provider requests, translation, terminology or profiles.
- *
- * Level semantics (M1, see ZCTr-context-M1-plan.md §6):
- * - selection: no context attached;
- * - local: containing sentence + current paragraph (+ adjacent paragraphs
- *   per policy) + section title (per policy);
- * - semantic: everything from local plus title + abstract (per policy);
- * - adaptive: like local; title + abstract are attached iff the risk
- *   heuristic matches the selected text (full scorer in M2).
- *
- * Any extraction failure degrades silently to a selection-only context.
- */
-
 import {getPref, PREFS} from "../../utils/prefs";
 import type {ViewLike} from "../../types/reader";
 import {
@@ -44,7 +25,6 @@ export interface ContextOptions {
 const LEVELS: ContextLevel[] = ["selection", "local", "semantic", "adaptive"];
 const DEFAULT_LEVEL: ContextLevel = "local";
 
-/** Read the context policy from preferences. */
 export function getContextOptionsFromPrefs(): ContextOptions {
 	const raw = getPref(PREFS.CONTEXT_LEVEL) as string;
 	const level: ContextLevel = (LEVELS as string[]).includes(raw)
@@ -62,22 +42,12 @@ export function getContextOptionsFromPrefs(): ContextOptions {
 	};
 }
 
-/**
- * Assemble the context for a translation request. Never throws: all
- * provider failures degrade to fewer/empty context fields.
- */
 export async function assembleContext(
 	view: ViewLike | undefined,
 	itemID: number | undefined,
 	selectedText: string,
 	opts: ContextOptions,
 ): Promise<TranslationContext> {
-	// Effective policy: a "包含…" flag only participates in cache identity
-	// (and is only meaningful) when its layer is reachable at the current
-	// level. Otherwise toggling it is a no-op that must neither change the
-	// fingerprint nor imply it has effect. Reachable layers by level:
-	//   selection: none;  local: firstSentence/paragraph + section + adjacent;
-	//   semantic/adaptive: all (+ document summary).
 	const reachDocSummary = (lvl: ContextLevel): boolean =>
 		lvl === "semantic" || lvl === "adaptive";
 	const policy: ContextPolicy = {
@@ -104,7 +74,6 @@ export async function assembleContext(
 	// then locates the selected text in the page chars, so the assembled
 	// context stays deterministic across reader states (same cache key).
 
-	// L1 - local context (sentence / paragraph / neighbors)
 	const local = getLocalContextFromView(
 		view,
 		ranges,
@@ -126,8 +95,6 @@ export async function assembleContext(
 		zlog.debug("no ranges and text not located in pages -> selection-only context");
 	}
 
-	// L2 - document-level summary (title / abstract), only for semantic and
-	// risk-matched adaptive selections.
 	const useDocSummary =
 		opts.level === "semantic" ||
 		(opts.level === "adaptive" && riskHeuristic(selectedText));
@@ -155,7 +122,6 @@ export async function assembleContext(
 		}
 	}
 
-	// Section title - best effort for every non-selection level.
 	if (opts.includeSectionTitle && ranges[0]) {
 		const sectionTitle = await getSectionTitle(view, ranges[0].pageIndex);
 		if (sectionTitle) {

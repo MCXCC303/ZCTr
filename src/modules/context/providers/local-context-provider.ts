@@ -1,22 +1,3 @@
-/**
- * LocalContextProvider - sentence / paragraph extraction from the reader's
- * per-page character arrays (Zotero reader internals, see
- * ZCTr-context-M1-plan.md §2 and §6).
- *
- * `view._pdfPages[pageIndex].chars` is an array of char objects produced by
- * the modified pdf.js pipeline:
- *   { c, ignorable, spaceAfter, lineBreakAfter, paragraphBreakAfter }
- * and the selection ranges index directly into it. This module renders chars
- * back to text and finds sentence / paragraph boundaries around the
- * selection offsets. The pure core (`extractLocalContext`) is dependency-free
- * and unit-testable with synthetic char arrays.
- *
- * Rendering rules (differ from the reader's own getTextFromChars, which
- * collapses every break into a space - we keep newlines for prompt
- * readability): spaceAfter -> " ", lineBreakAfter (non-paragraph) -> "\n",
- * paragraphBreakAfter -> "\n\n".
- */
-
 import type {ViewLike} from "../../../types/reader";
 import type {SelectionOffsetRange} from "./selection-resolver";
 import * as zlog from "../../../utils/logger";
@@ -31,7 +12,6 @@ export interface CharLike {
 
 export interface LocalContextOptions {
 	includeAdjacentParagraphs: boolean;
-	/** Total character cap across all local fields (priority: sentence first). */
 	maxChars: number;
 }
 
@@ -42,18 +22,12 @@ export interface ExtractedLocalContext {
 	nextParagraph?: string;
 }
 
-/** Hard scan cap: never walk more chars than this when searching boundaries. */
+/** Hard cap on chars walked when searching boundaries. */
 const MAX_SCAN = 2000;
 
-/** Common Latin abbreviations whose period must not end a sentence. */
 const ABBREVIATION_RE =
 	/^(e\.g\.|i\.e\.|etc\.|et al\.|figs?\.|cf\.|vs\.|al\.|approx\.|no\.|nos?\.|vols?\.|eds?\.|pp\.|p\.|eqs?\.|refs?\.|secs?\.|chaps?\.|dept\.|univ\.|inst\.)$/i;
 
-/**
- * Dotted token around a period, e.g. "e.g." from either of its two dots.
- * Stops at spaces / break flags / non-letter chars, so "e.g." is collected
- * as a whole from the first dot too.
- */
 function abbreviationTokenAt(chars: CharLike[], i: number): string {
 	let token = "";
 	for (let k = i; k >= 0; k--) {
@@ -79,7 +53,6 @@ function abbreviationTokenAt(chars: CharLike[], i: number): string {
 	return token;
 }
 
-/** Render chars[start..end) to text with the rules documented above. */
 export function renderChars(chars: CharLike[], start: number, end: number): string {
 	let out = "";
 	for (let i = start; i < end && i < chars.length; i++) {
@@ -112,13 +85,11 @@ function isSentenceEndChar(ch: CharLike | undefined, i: number, chars: CharLike[
 	if (c !== ".") {
 		return false;
 	}
-	// Decimal points (e.g. "87.28%", "0.01") must not end the sentence.
 	const prev = prevNonIgnorable(chars, i - 1);
 	const next = nextNonIgnorable(chars, i + 1);
 	if (prev && next && /\d/.test(prev.c) && /\d/.test(next.c)) {
 		return false;
 	}
-	// Abbreviation guard: "e.g.", "Fig." etc. must not terminate the sentence.
 	return !ABBREVIATION_RE.test(abbreviationTokenAt(chars, i));
 }
 
@@ -168,11 +139,6 @@ export function findSentenceStart(chars: CharLike[], from: number): number {
 	return Math.max(0, from - MAX_SCAN);
 }
 
-/**
- * End of the paragraph containing `from` (exclusive). A char with
- * paragraphBreakAfter belongs to its paragraph (break follows it); a blank
- * line ends the paragraph before it.
- */
 export function findParagraphEnd(chars: CharLike[], from: number): number {
 	for (let i = from; i < chars.length && i - from < MAX_SCAN; i++) {
 		if (chars[i].paragraphBreakAfter) {
@@ -185,7 +151,6 @@ export function findParagraphEnd(chars: CharLike[], from: number): number {
 	return Math.min(chars.length, from + MAX_SCAN);
 }
 
-/** Start of the paragraph containing `from`. */
 export function findParagraphStart(chars: CharLike[], from: number): number {
 	for (let i = from - 1; i >= 0 && from - i <= MAX_SCAN; i--) {
 		if (chars[i].paragraphBreakAfter) {
@@ -198,14 +163,10 @@ export function findParagraphStart(chars: CharLike[], from: number): number {
 	return Math.max(0, from - MAX_SCAN);
 }
 
-/** Fold all whitespace (incl. line breaks) to single spaces, NFC, trim. */
 export function normalizeWhitespace(text: string): string {
 	return text.normalize("NFC").replace(/\s+/g, " ").trim();
 }
 
-/** Normalized page text with source char index mapping: ignorables skipped,
- * whitespace runs folded to a single space token mapped to the char that
- * FOLLOWS the run (so an exclusive end at a space lands on the next word). */
 interface NormalizedPage {
 	text: string;
 	src: number[];
@@ -220,16 +181,10 @@ function normalizePage(chars: CharLike[]): NormalizedPage {
 		if (!ch || ch.ignorable) {
 			continue;
 		}
-		// A literal whitespace char only sets the pending flag - it must NOT
-		// emit a token itself, otherwise spaceAfter+literal-space layouts
-		// double every word gap ("synthesis  path").
 		if (/\s/.test(ch.c)) {
 			pendingSpace = true;
 			continue;
 		}
-		// A pending whitespace run becomes ONE space token mapped to the
-		// char that follows it (exclusive end at the space lands on the next
-		// word).
 		if (pendingSpace) {
 			text += " ";
 			src.push(i);
@@ -244,20 +199,6 @@ function normalizePage(chars: CharLike[]): NormalizedPage {
 	return {text, src};
 }
 
-/**
- * Locate the exact [start, end) char range of `text` in `chars`, preferring
- * the occurrence nearest to `from`. Coordinate-system independent: it only
- * relies on the text itself, so broken/overshooting selection offsets cannot
- * influence the result. Null when the text cannot be found.
- *
- * MATCHING STRATEGY: raw char-level state machine (no index mapping). The
- * PDF char models that Zotero emits cannot be trusted to translate a
- * whitespace-normalized index into a source index (we observed a +3 shift:
- * whitespace tokens alias onto next/previous source chars inconsistently
- * across layouts), so the needle is matched directly against the char
- * sequence with ignorables skipped and whitespace (literal chars OR
- * spaceAfter/lineBreakAfter/paragraphBreakAfter flags) folded.
- */
 export function locateSelectionText(
 	chars: CharLike[],
 	text: string,
@@ -272,8 +213,6 @@ export function locateSelectionText(
 	for (const s of starts) {
 		const hit = matchAtomsAt(chars, s, atoms);
 		if (hit) {
-			// Final render-level assertion: whatever the matcher found MUST
-			// render to exactly the needle (defense in depth).
 			if (normalizeWhitespace(renderChars(chars, hit.start, hit.end)) === needle) {
 				return hit;
 			}
@@ -282,12 +221,6 @@ export function locateSelectionText(
 	return null;
 }
 
-/**
- * Scan raw chars from `start` forward; at every word-boundary position that
- * starts the needle, attempt a full atom match. RESUMES on failure (a failed
- * phrase start must not abort the scan - that is what made the normalized
- * page text show the phrase while the match reported it missing).
- */
 function matchAtomsAt(
 	chars: CharLike[],
 	start: number,
@@ -311,12 +244,6 @@ function matchAtomsAt(
 	return null;
 }
 
-/**
- * One attempt: match the atoms starting EXACTLY at raw index `i0`.
- * Whitespace between atoms may be literal whitespace chars and/or the break
- * flags on the previous atom's last character. Returns the raw [start, end)
- * of the match; null when this start fails.
- */
 function matchAtomsFrom(
 	chars: CharLike[],
 	i0: number,
@@ -360,7 +287,6 @@ function matchAtomsFrom(
 			ai++;
 			ci = 0;
 			needSep = true;
-			// The separator MAY be implied by this char's own break flags.
 			sepOk = flagsWs;
 		}
 		i++;
@@ -368,7 +294,6 @@ function matchAtomsFrom(
 	return null;
 }
 
-/** True when the char before raw index `i` ends a word (or `i` is at 0). */
 function isWordBoundaryBefore(chars: CharLike[], i: number): boolean {
 	for (let k = i - 1; k >= 0; k--) {
 		const ch = chars[k];
@@ -385,18 +310,11 @@ function isWordBoundaryBefore(chars: CharLike[], i: number): boolean {
 	return true;
 }
 
-/** Diagnostics callback for selection/offset inconsistencies (pure core). */
 export type SelectionInconsistencyHandler = (
 	kind: "relocated" | "degraded",
 	detail: {rendered: string; expected: string},
 ) => void;
 
-/**
- * Build the local-context FIELDS for an explicit character range (sentence /
- * paragraph prefixed at the selection, clamped at the selection end). Shared
- * by the offset-based path and the text-search fallback so both produce
- * byte-identical fields.
- */
 export function computeLocalFields(
 	chars: CharLike[],
 	selStart: number,
@@ -406,20 +324,12 @@ export function computeLocalFields(
 	const sentStart = findSentenceStart(chars, selStart);
 	const paraStart = findParagraphStart(chars, selStart);
 	const trueParaEnd = findParagraphEnd(chars, selEnd);
-	// Anti-leak (v3.2): NOTHING after the selection end enters the local
-	// context. Fragment selections (no trailing punctuation) would otherwise
-	// drag the rest of the containing sentence - and via the paragraph,
-	// further sentences - into the prompt: the exact material models leak
-	// into their translation output. The containing sentence / current
-	// paragraph therefore both end at the selection end.
 	const contextEnd = selEnd;
 
 	const fields: ExtractedLocalContext = {
 		containingSentence: renderChars(chars, sentStart, contextEnd),
 		currentParagraph: renderChars(chars, paraStart, contextEnd),
 	};
-	// Dedupe: when the selection sits in the paragraph's first sentence the
-	// two fields are identical; keep the finer-grained label only.
 	if (fields.currentParagraph === fields.containingSentence) {
 		delete fields.currentParagraph;
 	}
@@ -429,11 +339,6 @@ export function computeLocalFields(
 		if (prevStart < paraStart) {
 			fields.previousParagraph = renderChars(chars, prevStart, paraStart);
 		}
-		// The next paragraph starts at the TRUE paragraph end - otherwise a
-		// selection-clamped context end would turn the rest of the current
-		// paragraph into "next paragraph" and reintroduce the leak material.
-		// Note: the next paragraph is text AFTER the selection, so enabling
-		// adjacent paragraphs remains an explicit opt-in leak risk.
 		const nextStart = trueParaEnd;
 		const nextEnd = findParagraphEnd(chars, trueParaEnd);
 		if (nextEnd > nextStart) {
@@ -441,9 +346,6 @@ export function computeLocalFields(
 		}
 	}
 
-	// Budget: sentence first, then current paragraph, then neighbors
-	// (architecture §10 priority: Selected > Instruction > Local > Abstract).
-	// Fields beyond the budget are dropped, not truncated.
 	let remaining = opts.maxChars;
 	for (const key of ["containingSentence", "currentParagraph", "previousParagraph", "nextParagraph"] as const) {
 		const value = fields[key];
@@ -464,13 +366,7 @@ export function computeLocalFields(
 	return fields;
 }
 
-/**
- * Extract the local context around a selection. `range.anchorOffset/headOffset`
- * are char indices into `chars`; the selection covers [min, max) (matching the
- * reader's getRange slicing semantics). `selectedText` is the AUTHORITATIVE
- * selected text (what the popup is translating); when provided it (not
- * range.text) is the consistency baseline.
- */
+/** `anchorOffset`/`headOffset` are char indices into `chars`; selection is [min, max). */
 export function extractLocalContext(
 	chars: CharLike[],
 	range: Pick<SelectionOffsetRange, "anchorOffset" | "headOffset" | "text">,
@@ -491,14 +387,6 @@ export function extractLocalContext(
 		return {};
 	}
 
-	// Self-consistency: the offsets must describe exactly the text being
-	// translated. Zotero 10 beta's selection restore path can leave the
-	// logical range (and its own range.text) describing MORE than the actual
-	// selection (e.g. a whole sentence), which dragged post-selection
-	// material into the local context - the leak the clamp prevents, and the
-	// reason the cache key differed between "selected" and "highlighted"
-	// workflows. The baseline is the AUTHORITATIVE popup text (never the
-	// reader's own range.text, which shares the reader's mistake).
 	const authority =
 		selectedText && selectedText.trim()
 			? selectedText.trim()
@@ -524,19 +412,6 @@ export function extractLocalContext(
 	return computeLocalFields(chars, selStart, selEnd, opts);
 }
 
-/**
- * View wrapper: read the first selection page's chars and extract the local
- * context. Any failure silently degrades to an empty context (M1 policy:
- * extraction errors must never block translation). Multi-page selections use
- * the first page only (documented M1 simplification).
- *
- * `selectedText` is the AUTHORITATIVE selection text (what the popup
- * translates). When the reader's logical selection ranges are unavailable or
- * inconsistent (Zotero 10 beta clears them in the annotation flow), the
- * selection is re-located by TEXT across the page chars - making the local
- * context a pure function of (page text + selected text), so the cache key no
- * longer depends on reader selection state.
- */
 export function getLocalContextFromView(
 	view: ViewLike | undefined,
 	ranges: SelectionOffsetRange[],
@@ -554,16 +429,13 @@ export function getLocalContextFromView(
 			: undefined;
 		if (Array.isArray(chars) && chars.length) {
 			if (typeof range.anchorOffset !== "number" || typeof range.headOffset !== "number") {
-				// Old readers without char offsets: fall back to the selection text
 				const text = (selectedText || range.text || "").trim();
 				return text ? {containingSentence: text} : {};
 			}
 			return extractLocalContext(chars, range, opts, selectedText, (kind, detail) => {
-				zlog.warn(`选区偏移与选中文本不一致（${kind}）: rendered="${detail.rendered.slice(0, 60)}" expected="${detail.expected.slice(0, 60)}"`);
+				zlog.warn(`Selection offsets differ from the selected text (${kind}): rendered="${detail.rendered.slice(0, 60)}" expected="${detail.expected.slice(0, 60)}"`);
 			});
 		}
-		// No usable selection ranges (annotation flow): locate by text so the
-		// context stays deterministic across reader states.
 		if (selectedText && selectedText.trim()) {
 			return localContextBySearch(pages, selectedText, opts);
 		}
@@ -574,8 +446,6 @@ export function getLocalContextFromView(
 	}
 }
 
-/** Locate `selectedText` in the page grid (first page containing it wins)
- * and build the same clamped local context fields. */
 function localContextBySearch(
 	pages: any,
 	selectedText: string,
@@ -589,7 +459,7 @@ function localContextBySearch(
 		.map((k) => Number(k))
 		.filter((n) => Number.isInteger(n))
 		.sort((a, b) => a - b);
-	zlog.info(`回退定位扫描开始: pages=${pageIndexes.length} needle="${needle.slice(0, 40)}"`);
+	zlog.info(`Fallback location scan started: pages=${pageIndexes.length} needle="${needle.slice(0, 40)}"`);
 	const firstWord = needle.split(/\s+/)[0] ?? "";
 	let firstWordHits = 0;
 	for (const pageIndex of pageIndexes) {
@@ -599,17 +469,14 @@ function localContextBySearch(
 		}
 		const located = locateSelectionText(chars, needle, 0);
 		if (located) {
-			zlog.info(`选区回退定位: page=${pageIndex} range=[${located.start}, ${located.end})`);
+			zlog.info(`Selection fallback located: page=${pageIndex} range=[${located.start}, ${located.end})`);
 			return computeLocalFields(chars, located.start, located.end, opts);
 		}
-		// Diagnostic: is the first word present but the phrase not matchable?
 		const pageText = normalizePage(chars).text;
 		if (firstWord && pageText.includes(normalizeWhitespace(firstWord))) {
 			firstWordHits++;
 			const wordIdx = pageText.indexOf(normalizeWhitespace(firstWord));
 			const window = pageText.slice(Math.max(0, wordIdx - 120), wordIdx + 200);
-			// Raw chars around the first word (flags included) - the only
-			// reliable ground truth for why the phrase match failed.
 			const wordHit = matchAtomsAt(chars, 0, [normalizeWhitespace(firstWord)]);
 			const rawFrom = wordHit ? Math.max(0, wordHit.start - 16) : Math.max(0, wordIdx - 16);
 			const rawLen = wordHit ? wordHit.end - rawFrom + 48 : 140;
@@ -621,10 +488,10 @@ function localContextBySearch(
 						: "null",
 				)
 				.join(",");
-			// JSON.stringify exposes hidden chars (NBSP, soft hyphens, etc.).
-			zlog.info(`回退定位-首词命中但短语未匹配: page=${pageIndex} needle=${JSON.stringify(needle)} window=${JSON.stringify(window)} raw=[${rawDump}]`);
+			// JSON.stringify escapes hidden chars (NBSP, soft hyphens) so they show in logs.
+			zlog.info(`Fallback location - first word matched but phrase did not: page=${pageIndex} needle=${JSON.stringify(needle)} window=${JSON.stringify(window)} raw=[${rawDump}]`);
 		}
 	}
-	zlog.warn(`回退定位失败: pages=${pageIndexes.length} firstWordHits=${firstWordHits}`);
+	zlog.warn(`Fallback location failed: pages=${pageIndexes.length} firstWordHits=${firstWordHits}`);
 	return {};
 }

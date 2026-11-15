@@ -1,10 +1,3 @@
-/**
- * "ZCTr 翻译" entry on the reader's view context menu.
- *
- * Right-clicking the PDF view opens `createViewContextMenu`; when there is a
- * text selection the menu gets a ZCTr entry that translates the selection.
- */
-
 import {
 	consumeReaderEntry,
 	getReaderContext,

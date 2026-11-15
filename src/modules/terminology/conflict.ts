@@ -1,21 +1,3 @@
-/**
- * Conflict resolver - turns raw term occurrences into the final matched set
- * (architecture §17, P2 plan §3.2 Step 5).
- *
- * Resolution order:
- *   1. exact language pair        (already enforced by matchTermbase)
- *   2. narrowest scope            (v1: termbase scope only)
- *   3. longest match              (longer phrase shadows contained ones)
- *   4. preferred status
- *   5. explicit user override     (v1: none - reserved)
- *   6. latest updated entry
- *   7. deterministic fallback     (termId / conceptId ordering)
- *
- * After overlap resolution the set is deduplicated per concept and capped at
- * DEFAULT_MAX_MATCHED_TERMS (truncation priority: forbidden > preferred >
- * admitted > deprecated).
- */
-
 import {
 	DEFAULT_MAX_MATCHED_TERMS,
 	type MatchedTerm,
@@ -31,13 +13,8 @@ const STATUS_RANK: Record<TermStatus, number> = {
 	deprecated: 0,
 };
 
-/** v1: every occurrence is scoped to its own termbase. */
 const SCOPE_TYPE = "termbase" as const;
 
-/**
- * Resolve overlaps (longest match wins; ties by status, recency, then a
- * deterministic term id), dedupe per concept, and cap the result.
- */
 export function resolveConflicts(
 	occurrences: TermOccurrence[],
 	termbaseId: string,
@@ -45,8 +22,7 @@ export function resolveConflicts(
 ): MatchedTermSet {
 	const maxTerms = opts.maxTerms ?? DEFAULT_MAX_MATCHED_TERMS;
 
-	// 1. Overlap resolution: sort by (start asc, length desc, status desc,
-	//    recency desc, termId asc) and greedily keep non-overlapping winners.
+	// 1. Overlap resolution: greedy longest-first, ties by status, recency, termId.
 	const ranked = occurrences
 		.slice()
 		.sort((a, b) => {
@@ -119,14 +95,6 @@ export function resolveConflicts(
 	};
 }
 
-/**
- * Merge sets from multiple termbases. CROSS-TERMBASE overlap suppression
- * (longest match wins, ties by status / scope / concept): a compound match
- * ("single cell") shadows contained one-word matches from ANY termbase so the
- * model never receives contradictory constraints for the same span. Then
- * dedupe per concept and re-cap at maxTerms (priority: forbidden > preferred
- * > admitted > deprecated). Spans come from the space-folded match keys.
- */
 export function mergeMatchedSets(
 	sets: MatchedTermSet[],
 	opts: {maxTerms?: number} = {},
@@ -134,8 +102,6 @@ export function mergeMatchedSets(
 	const maxTerms = opts.maxTerms ?? DEFAULT_MAX_MATCHED_TERMS;
 	const all = sets.flatMap((s) => s.matched);
 
-	// Overlap suppression: greedy longest-first on spans (only when spans are
-	// available; legacy records without spans fall through untouched).
 	const withSpan = all.filter((m) => typeof m.start === "number" && typeof m.end === "number");
 	const withoutSpan = all.filter((m) => !(typeof m.start === "number" && typeof m.end === "number"));
 	const ranked = withSpan
@@ -192,8 +158,7 @@ export function mergeMatchedSets(
 		}
 	}
 	return {
-		// Termbasas that actually contributed to the final set (not the input
-		// sets) - the cache fingerprint must reflect what is injected.
+		// Only the termbases that contributed to the final set (cache fingerprint).
 		termbaseIds: [...new Set(deduped.map((m) => m.scopeId))].sort(),
 		schemaVersion: 1,
 		matched: deduped,

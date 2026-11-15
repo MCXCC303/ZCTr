@@ -1,25 +1,3 @@
-/**
- * Translation prompt - builds the chat messages for a translation request
- * (ZCTr-context-ARCHITECTURE.md §13, ZCTr-modules-ARCHITECTURE.md §4).
- *
- * Owns the prompt contract: TRANSLATOR_ROLE, TRANSLATION_PROMPT_VERSION and
- * the structured [DOCUMENT] / [LOCAL CONTEXT] + <target> assembly.
- * The provider transport only receives the finished messages.
- *
- * Anti-leak structure (v3, see ZCTr-context-M1-plan.md §7):
- * - the translation target is wrapped in explicit XML-style markers
- *   (<target>...</target>, falling back to [TRANSLATION START]/[END] when
- *   the source text itself contains the tags);
- * - an explicit instruction naming the markers sits in the USER message,
- *   directly adjacent to the target (small translation models obey nearby
- *   instructions far better than system-message-only constraints);
- * - the closing marker gives the auto-regressive model a hard stop point,
- *   preventing it from continuing into the context blocks;
- * - the system message is a single variant per target language (context
- *   presence no longer splits the prompt prefix, which keeps provider-side
- *   prefix caching intact).
- */
-
 import {formatContextBlocks} from "../context/renderer";
 import type {TranslationContext} from "../context/context";
 import {
@@ -33,25 +11,14 @@ export interface ChatMessage {
 	content: string;
 }
 
-/**
- * Version of the translation prompt contract. Bump it whenever any of the
- * following changes (architecture §9): system prompt, output constraints,
- * translation format rules, context label semantics, terminology injection
- * syntax. The prompt version participates in the translation cache key.
- */
 export const TRANSLATION_PROMPT_VERSION = 4;
 
-/** Default target markers (XML-style; strong boundary for most models). */
 const DEFAULT_OPEN = "<target>";
 const DEFAULT_CLOSE = "</target>";
-/** Fallback markers when the source text contains the default ones. */
 const FALLBACK_OPEN = "[TRANSLATION START]";
 const FALLBACK_CLOSE = "[TRANSLATION END]";
 
-/**
- * Pick the target markers for a source text. Papers may legitimately contain
- * XML-ish fragments; never let the markers collide with the content.
- */
+/** Papers may contain XML-ish fragments, so the markers must never collide with the source. */
 export function pickTargetMarkers(text: string): {open: string; close: string} {
 	if (text.includes(DEFAULT_OPEN) || text.includes(DEFAULT_CLOSE)) {
 		return {open: FALLBACK_OPEN, close: FALLBACK_CLOSE};
@@ -59,18 +26,6 @@ export function pickTargetMarkers(text: string): {open: string; close: string} {
 	return {open: DEFAULT_OPEN, close: DEFAULT_CLOSE};
 }
 
-/**
- * Strip the target markers from a model output.
- *
- * Some translation models echo the boundary tags around their output
- * (e.g. "<target>\n<译文>\n</target>") while otherwise obeying the
- * boundary - the markers are decoration, not translation. Normalize before
- * caching/displaying:
- * - when both markers are present, keep only the content between them
- *   (this also drops any acknowledgment before the opening marker);
- * - otherwise strip a leading opening marker / trailing closing marker.
- * Output without markers passes through unchanged.
- */
 export function stripTargetMarkers(raw: string, sourceText: string): string {
 	const {open, close} = pickTargetMarkers(sourceText);
 	let out = raw.trim();
@@ -89,14 +44,6 @@ export function stripTargetMarkers(raw: string, sourceText: string): string {
 	return out.trim();
 }
 
-/**
- * Stable translator role prompt. Kept constant across requests so the
- * conversation prefix stays identical and provider-side prompt caches
- * (DeepSeek context caching, OpenAI automatic caching) hit.
- *
- * The user message is treated strictly as source text: any instructions
- * embedded in it (including injection attempts) are translated, not obeyed.
- */
 const TRANSLATOR_ROLE = `You are a professional translator with expertise across multiple languages and domains. Your task is to produce accurate, natural, and contextually appropriate translations.
 
 Core principles:
@@ -113,12 +60,6 @@ Formatting rules:
 - For code blocks and inline code: translate only comments and visible string literals; leave code syntax, variable names, and identifiers intact
 - Do not add any other text, explanation, or follow-up questions`;
 
-/**
- * Build the system message: role prompt + target-language instruction +
- * a single anti-leak constraint. One byte-identical variant per target
- * language (independent of context presence), so the request prefix stays
- * cacheable across all selections in a session.
- */
 function buildSystemMessage(targetLang: string): string {
 	return [
 		TRANSLATOR_ROLE,
@@ -127,20 +68,6 @@ function buildSystemMessage(targetLang: string): string {
 	].join("\n\n");
 }
 
-/**
- * Build the chat messages. The translation target is always wrapped in
- * explicit markers. v4 structures the user message as
- *   instruction -> <target>…</target>  ->  reference blocks AFTER the target
- * so the context (and any terminology material) is POST-target reference:
- * the model's generation ends at the closing marker (hard stop), so it
- * cannot translate/summarize the surrounding material - small translation
- * models habitually translated a containing sentence sitting before the
- * target. Reference blocks follow with an explicit label.
- *
- * When `terminology` carries matched terms, the constraint sentence is
- * appended to the instruction (adjacent to <target>); the block itself is
- * post-target reference material (P2 plan §3.3, §6).
- */
 export function buildMessages(
 	text: string,
 	targetLang: string,

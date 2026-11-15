@@ -1,22 +1,5 @@
-/**
- * Terminology injection - formats a resolved MatchedTermSet into the
- * [TERMINOLOGY] prompt block (P2 plan §3.3).
- *
- * Layout (stable for prefix caching and small-model obedience):
- *   [TERMINOLOGY]
- *   twistane -> 扭转烷 (preferred)
- *   ...
- *   Forbidden translations:
- *     fine-tuning -> 精调
- *
- * Returns "" when the set is empty - the caller then emits no block and no
- * constraint sentence. Pure function; the prompt module owns the final
- * message assembly.
- */
-
 import type {MatchedTermSet} from "./model";
 
-/** Render the [TERMINOLOGY] block; "" when nothing matched. */
 export function formatTerminologyBlock(
 	set: MatchedTermSet | null | undefined,
 ): string {
@@ -39,8 +22,6 @@ export function formatTerminologyBlock(
 	return lines.join("\n");
 }
 
-/** Constraint sentence appended to the translation instruction when the
- * terminology block is present (adjacent to <target>, anti-leak layout). */
 export function terminologyConstraint(): string {
 	return "When the source text contains the listed terms, use the listed target terms.";
 }

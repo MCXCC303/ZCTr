@@ -1,9 +1,3 @@
-/**
- * Provider registry - list / activation / persistence of provider configs.
- * Credentials stay in the login manager (credentials.ts) and are merged back
- * only by `getActiveProvider`.
- */
-
 import {getPref, PREFS, setPref} from "../../utils/prefs";
 import {getProviderApiKey, setProviderApiKey} from "./credentials";
 import type {ProviderConfig} from "./types";
@@ -20,8 +14,7 @@ export function getProviders(): ProviderConfig[] {
 		const providers: ProviderConfig[] = list.map(
 			(p: any): ProviderConfig => {
 				const provider: ProviderConfig = {type: "openai", ...p};
-				// One-time migration of plaintext apiKey (pre type-field versions)
-				// into the login manager, then drop it from the stored JSON.
+				// One-time migration of legacy plaintext apiKey into the login manager.
 				if (provider.apiKey) {
 					setProviderApiKey(provider.id, provider.apiKey).catch(() => {
 					});
@@ -41,10 +34,7 @@ export function getProviders(): ProviderConfig[] {
 	}
 }
 
-/**
- * Persist providers. apiKey is never written to the pref - call
- * `setProviderApiKey(id, key)` separately for sensitive credentials.
- */
+/** Persist providers; apiKey is never written to the pref. */
 export function saveProviders(providers: ProviderConfig[]): void {
 	setPref(
 		PREFS.PROVIDERS,
@@ -52,7 +42,7 @@ export function saveProviders(providers: ProviderConfig[]): void {
 	);
 }
 
-/** The active provider with its API key merged back in. */
+/** The active provider, with its API key merged back in from the login manager. */
 export function getActiveProvider(): ProviderConfig | null {
 	const activeId = getPref(PREFS.ACTIVE_PROVIDER_ID) as string;
 	if (!activeId) {

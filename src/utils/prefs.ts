@@ -2,62 +2,52 @@ import {config} from "../../package.json";
 
 const PREFS_PREFIX = config.prefsPrefix;
 
-/** Preference keys used by the plugin. */
 export const PREFS = {
-	/** JSON array of provider configs (without apiKey - stored separately). */
+	/** JSON array of provider configs; apiKey is stored separately. */
 	PROVIDERS: "providers",
-	/** Id of the active provider. */
 	ACTIVE_PROVIDER_ID: "activeProviderId",
 	/** Target translation language code, e.g. "zh". */
 	TARGET_LANG: "targetLang",
 	/** Translate hotkey combo, e.g. "ctrl+alt+t"; empty = disabled. */
 	SHORTCUT: "shortcut",
-	/** Whether to use streaming (SSE) translation output. */
 	STREAMING: "streaming",
 	/** Sampling temperature (number; 0 = deterministic). */
 	TEMPERATURE: "temperature",
-	/** Nucleus sampling top_p (number, "" = not sent / provider default). */
+	/** top_p (number; "" = not sent, provider default). */
 	TOP_P: "topP",
-	/** Top-K sampling (number, "" = not sent / provider default). */
+	/** top_k (number; "" = not sent, provider default). */
 	TOP_K: "topK",
-	/** Repetition penalty (number, "" = not sent / provider default). */
+	/** repetition_penalty (number; "" = not sent, provider default). */
 	REPETITION_PENALTY: "repetitionPenalty",
-	/** Max output tokens (number, "" = not sent / provider default). */
+	/** max_output_tokens (number; "" = not sent, provider default). */
 	MAX_OUTPUT_TOKENS: "maxOutputTokens",
 	/** Context level: selection | local | semantic | adaptive. */
 	CONTEXT_LEVEL: "contextLevel",
-	/** Include Abstract in the document-level context. */
 	CONTEXT_INCLUDE_ABSTRACT: "contextIncludeAbstract",
-	/** Include item Title in the document-level context. */
 	CONTEXT_INCLUDE_TITLE: "contextIncludeTitle",
-	/** Include the PDF outline section title when available. */
 	CONTEXT_INCLUDE_SECTION_TITLE: "contextIncludeSectionTitle",
-	/** Include previous/next paragraphs around the selection. */
 	CONTEXT_INCLUDE_ADJACENT_PARAGRAPHS: "contextIncludeAdjacentParagraphs",
 	/** Include matched terminology (independent of the context level). */
 	CONTEXT_INCLUDE_TERMINOLOGY: "contextIncludeTerminology",
-	/** Master switch for termbase matching/injection. */
 	TERMINOLOGY_ENABLED: "terminologyEnabled",
 	/** Log level: error | warn | info | debug. */
 	LOG_LEVEL: "logLevel",
-	/** Active (persisted) termbase id for the termbase manager UI. */
 	ACTIVE_TERMBASE_ID: "activeTermbaseId",
-	/** Whether the translation cache is persisted across sessions. */
 	CACHE_PERSIST: "cachePersist",
-	/** In-memory translation cache queue length. */
+	/** In-memory cache queue length (-1 = unlimited). */
 	CACHE_LIMIT: "cacheLimit",
-	/** Persisted translation cache queue length. */
+	/** Persisted cache queue length (-1 = unlimited). */
 	CACHE_PERSIST_LIMIT: "cachePersistLimit",
 } as const;
 
 export type PrefKey = (typeof PREFS)[keyof typeof PREFS];
 
-/** Get a plugin preference value (global, `extensions.zotero.zctr.*`). */
+/** Read a plugin preference (global scope). */
 export function getPref(key: PrefKey): unknown {
 	return Zotero.Prefs.get(`${PREFS_PREFIX}.${key}`, true);
 }
 
-/** Set a plugin preference value. */
+/** Write a plugin preference (global scope). */
 export function setPref(key: PrefKey, value: string | number | boolean): void {
 	Zotero.Prefs.set(`${PREFS_PREFIX}.${key}`, value, true);
 }

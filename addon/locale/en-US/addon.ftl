@@ -1,14 +1,6 @@
-# ZCTr — user-visible strings.
-#
-# Ids are written unprefixed here. During the build zotero-plugin-scaffold
-# renames this file to `zctr-addon.ftl` and prefixes every id with `zctr-`;
-# getString() in src/utils/locale.ts adds the same prefix when a message is
-# looked up from JavaScript, and addon/content/preferences.xhtml references
-# these messages through data-l10n-id (the attribute value is prefixed by the
-# build as well).
-#
-# Logs (zlog.*), LLM prompts and code comments are not user-visible and stay in
-# the source.
+# The build renames this file to `zctr-addon.ftl` and prefixes every id with
+# `zctr-`; getString() (src/utils/locale.ts) and the `data-l10n-id` attributes
+# in addon/content/preferences.xhtml use the same prefixed ids.
 
 # Add-on name
 addon-name = ZCTr
@@ -93,10 +85,7 @@ term-error-target-language = The termbase language pair { $source } → { $targe
 term-error-duplicate = The source term “{ $term }” already exists in termbase “{ $name }” (entry { $conceptId }).
 term-error-save = Save failed: { $detail }
 
-# ---------------------------------------------------------------------------
-# Preferences pane (referenced from addon/content/preferences.xhtml through
-# data-l10n-id)
-# ---------------------------------------------------------------------------
+# Preferences pane (data-l10n-id in addon/content/preferences.xhtml)
 
 pref-section-providers = Providers
 pref-btn-add-provider = Add provider
@@ -169,8 +158,7 @@ pref-desc-cache-limit = -1 means unlimited (an ever-growing cache can slow Zoter
 pref-section-log = Logging
 pref-label-log-level = Log level
 
-# ZCTr — strings for the collect-term dialog (source: src/modules/reader/collect-term.ts).
-# Merge into addon/locale/en-US/addon.ftl.
+# Collect-term dialog (src/modules/reader/collect-term.ts)
 
 # Window title and status labels (the status values preferred/admitted/forbidden/deprecated themselves stay unlocalized)
 collect-title = Collect Term
@@ -202,8 +190,7 @@ collect-unknown = unknown
 collect-hint-footer = Note: entries that duplicate an existing term or conflict with the language pair are rejected.
 collect-button-cancel = Cancel
 collect-button-collect = Collect
-# ZCTr termbase manager (src/modules/preferences/termbase-ui.ts) user-visible strings.
-# Merge into addon/locale/en-US/addon.ftl; ids are unprefixed (the build adds zctr-).
+# Termbase manager (src/modules/preferences/termbase-ui.ts)
 
 tb-select-placeholder = Select a termbase…
 tb-select-empty = (no termbase)

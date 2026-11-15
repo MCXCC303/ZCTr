@@ -1,14 +1,3 @@
-/**
- * Termbase import / export (architecture §11, P2 plan §3.1).
- *
- * Minimum formats: TSV, CSV, JSON. One TSV/CSV row = one concept with a
- * source term and a target term. Optional extra columns: status, note
- * (TSV/CSV are intentionally lossy - variants/definitions/scopes survive
- * only in the JSON format; the mapping is documented, not TBX).
- *
- * All functions are pure and unit-testable.
- */
-
 import {
 	TERMBASE_SCHEMA_VERSION,
 	type ConceptEntry,
@@ -34,11 +23,6 @@ function parseStatus(raw: string | undefined): TermStatus | undefined {
 	return STATUSES.includes(s) ? s : undefined;
 }
 
-// ---------------------------------------------------------------------------
-// TSV
-// ---------------------------------------------------------------------------
-
-/** Parse tab-separated rows: source \t target [\t status [\t note]]. */
 export function parseTsv(text: string): ParsedRow[] {
 	const rows: ParsedRow[] = [];
 	for (const line of text.split(/\r?\n/)) {
@@ -62,7 +46,6 @@ export function parseTsv(text: string): ParsedRow[] {
 	return rows;
 }
 
-/** Serialize a termbase to TSV (one row per source/target term pair). */
 export function toTsv(termbase: Termbase): string {
 	const lines: string[] = [];
 	for (const entry of termbase.entries) {
@@ -81,11 +64,6 @@ export function toTsv(termbase: Termbase): string {
 	return lines.join("\n");
 }
 
-// ---------------------------------------------------------------------------
-// CSV
-// ---------------------------------------------------------------------------
-
-/** Minimal CSV parser: quoted fields with escaped double quotes, comma sep. */
 export function parseCsv(text: string): string[][] {
 	const rows: string[][] = [];
 	let row: string[] = [];
@@ -130,7 +108,6 @@ export function parseCsv(text: string): string[][] {
 	return rows;
 }
 
-/** Parse CSV rows in the same 2-4 column shape as TSV. */
 export function parseCsvRows(text: string): ParsedRow[] {
 	const rows: ParsedRow[] = [];
 	for (const cols of parseCsv(text)) {
@@ -149,11 +126,6 @@ export function parseCsvRows(text: string): ParsedRow[] {
 	return rows;
 }
 
-// ---------------------------------------------------------------------------
-// JSON
-// ---------------------------------------------------------------------------
-
-/** Parse a termbase JSON document (unknown fields ignored, forward-compat). */
 export function parseTermbaseJson(text: string): Termbase {
 	const raw = JSON.parse(text) as Partial<Termbase>;
 	return {
@@ -174,15 +146,7 @@ export function toJson(termbase: Termbase, pretty = true): string {
 	return JSON.stringify(termbase, null, pretty ? "\t" : undefined);
 }
 
-// ---------------------------------------------------------------------------
-// Row -> termbase
-// ---------------------------------------------------------------------------
-
-/**
- * Delimiter auto-detection for plain-text termbase files: tabs win when the
- * text parses as TSV, otherwise fall back to CSV. Used for .txt imports and
- * as a safety net for mislabeled .tsv/.csv files.
- */
+// Tabs win when the text parses as TSV; otherwise fall back to CSV.
 export function parseDelimited(text: string): ParsedRow[] {
 	const tsv = parseTsv(text);
 	if (tsv.length) {
@@ -198,12 +162,6 @@ function nextConceptId(): string {
 	return `c-${String(++rowConceptCounter).padStart(6, "0")}`;
 }
 
-/**
- * Build a termbase from parsed rows: each row becomes one concept with a
- * source term and a target term. Rows with the same (source, target) pair
- * are deduplicated; identical source text with different targets becomes
- * separate concepts (each is a distinct concept to the model).
- */
 export function termbaseFromRows(
 	rows: ParsedRow[],
 	meta: {

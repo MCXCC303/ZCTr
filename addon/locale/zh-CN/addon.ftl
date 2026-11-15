@@ -1,19 +1,14 @@
-# ZCTr — 用户可见文案。
-#
-# 此处的消息 id 不带前缀。构建时 zotero-plugin-scaffold 会把本文件重命名为
-# `zctr-addon.ftl`，并给每个 id 加上 `zctr-` 前缀；src/utils/locale.ts 中的
-# getString() 在查找时会补上同样的前缀，addon/content/preferences.xhtml 则通过
-# data-l10n-id 引用这些消息（构建时属性值同样会被加上前缀）。
-#
-# 日志（zlog.*）、LLM 提示词和代码注释不属于用户可见文案，保留在代码里。
+# The build renames this file to `zctr-addon.ftl` and prefixes every id with
+# `zctr-`; getString() (src/utils/locale.ts) and the `data-l10n-id` attributes
+# in addon/content/preferences.xhtml use the same prefixed ids.
 
-# 插件名
+# Add-on name
 addon-name = ZCTr
 
-# 阅读器右键菜单项
+# Reader context-menu entry
 menu-translate = ZCTr 翻译
 
-# 翻译弹窗
+# Translation popup
 popup-title = ZCTr 翻译
 popup-close = 关闭
 popup-cache-badge = ⚡ 缓存
@@ -27,7 +22,7 @@ popup-error = ⚠ 翻译失败：{ $detail }
 popup-retry = 重试
 popup-translating = 翻译中…
 
-# 设置面板：JS 侧文案（XHTML 侧见文件末尾的 pref-* 组）
+# Preferences pane: strings used from JavaScript (the XHTML side is the pref-* group below)
 prefs-init-error = ZCTr 设置初始化失败：{ $detail }
 pref-provider-empty = 暂无供应商，点击下方“添加供应商”开始配置。
 pref-provider-active = ● 激活
@@ -38,7 +33,7 @@ pref-context-level-local = 含句 + 当前段 + 小节标题 (+ 相邻段)
 pref-context-level-semantic = 含句 + 当前段 + 小节标题 + 条目标题 + 摘要
 pref-context-level-adaptive = 含句 + 当前段 + 小节标题 (+ 条目标题 + 摘要)
 
-# 供应商类型与表单
+# Provider types and forms
 provider-type-openai = OpenAI 兼容
 provider-type-deepseek = DeepSeek
 provider-type-ollama = Ollama
@@ -54,7 +49,7 @@ ollama-connected-empty = ✓ 连接成功（未检测到已安装的模型）
 ollama-failed = ✗ 连接失败：{ $detail }
 error-ollama-unreachable = 无法连接 Ollama 服务
 
-# 目标语言下拉（语言名随界面语言变化；prompt 另用英文名，见 provider/languages.ts）
+# Target-language dropdown (labels follow the UI language; prompts use the English names)
 lang-zh = 中文
 lang-en = 英文
 lang-ja = 日文
@@ -69,7 +64,7 @@ lang-ar = 阿拉伯文
 lang-th = 泰文
 lang-vi = 越南文
 
-# 术语库数据校验 / 存储（错误会出现在导入与保存提示中）
+# Termbase validation / storage (errors shown in import and save alerts)
 termbase-error-id = termbaseId 不能为空
 termbase-error-source-language = sourceLanguage 不能为空
 termbase-error-target-language = targetLanguage 不能为空
@@ -82,7 +77,7 @@ termbase-error-no-id = (无 id)
 termbase-error-access-dir = 无法访问术语库目录
 termbase-error-validation = 术语库校验失败: { $detail }
 
-# 术语收录（写入侧）的语言对 / 重复校验提示
+# Term collection (write side) language-pair / duplicate refusals
 term-error-not-found = 术语库不存在或无法读取，请重新打开收录窗口。
 term-error-empty = 源术语与目标术语不能为空。
 term-error-doc-language = 术语库语言对为 { $source } → { $target }，与当前文档语言（{ $docLang }）冲突：该词条的源术语永远不会被匹配到。请选择语言对匹配的术语库。
@@ -90,9 +85,7 @@ term-error-target-language = 术语库语言对为 { $source } → { $target }�
 term-error-duplicate = 源术语「{ $term }」已存在于术语库「{ $name }」（词条 { $conceptId }）。
 term-error-save = 保存失败：{ $detail }
 
-# ---------------------------------------------------------------------------
-# 设置面板（addon/content/preferences.xhtml 通过 data-l10n-id 引用）
-# ---------------------------------------------------------------------------
+# Preferences pane (data-l10n-id in addon/content/preferences.xhtml)
 
 pref-section-providers = 供应商设置
 pref-btn-add-provider = 添加供应商
@@ -165,24 +158,23 @@ pref-desc-cache-limit = -1 表示不限制长度（缓存不断累积可能导�
 pref-section-log = 日志
 pref-label-log-level = 日志级别
 
-# ZCTr — 术语收录弹窗的文案（源文件：src/modules/reader/collect-term.ts）。
-# 合并进 addon/locale/zh-CN/addon.ftl。
+# Collect-term dialog (src/modules/reader/collect-term.ts)
 
-# 窗口标题与状态标签（status 取值 preferred/admitted/forbidden/deprecated 本身不本地化）
+# Window title and status labels (the status values preferred/admitted/forbidden/deprecated themselves stay unlocalized)
 collect-title = 收录术语
 collect-status-preferred = 首选
 collect-status-admitted = 许用
 collect-status-forbidden = 禁用
 collect-status-deprecated = 废弃
 
-# 错误提示（$detail 为技术细节）
+# Alerts ($detail is the technical message)
 collect-error-load-termbases = 加载术语库失败：{ $detail }
 collect-error-no-termbase = 尚未创建任何术语库。请先新建或导入术语库。
 collect-error-open-window = 无法打开收录窗口。
 collect-error-init-window = 窗口初始化失败：{ $detail }
 collect-alert-rejected = 无法收录
 
-# 表单
+# Form
 collect-section-termbases = 术语库
 collect-termbase-option = { $name }（{ $source } → { $target } · { $count } 词条）
 collect-field-source = 源术语
@@ -198,8 +190,7 @@ collect-unknown = 未知
 collect-hint-footer = 注：重复或语言对冲突的收录会被拒绝。
 collect-button-cancel = 取消
 collect-button-collect = 收录
-# ZCTr 术语库管理器（src/modules/preferences/termbase-ui.ts）的用户可见文案。
-# 合并进 addon/locale/zh-CN/addon.ftl；id 不带前缀，构建时统一加 zctr-。
+# Termbase manager (src/modules/preferences/termbase-ui.ts)
 
 tb-select-placeholder = 选择术语库…
 tb-select-empty = （无术语库）

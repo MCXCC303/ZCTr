@@ -1,10 +1,3 @@
-/**
- * ContextRenderer - formats an attached TranslationContext into the
- * [DOCUMENT] / [LOCAL CONTEXT] prompt blocks (ZCTr-context-ARCHITECTURE.md
- * §13). Returns "" when nothing is attached - the caller then falls back to
- * the plain selection-only user message.
- */
-
 import type {TranslationContext} from "./context";
 
 export function formatContextBlocks(ctx: TranslationContext): string {

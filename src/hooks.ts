@@ -20,29 +20,22 @@ async function onStartup() {
 		Zotero.uiReadyPromise,
 	]);
 
-	// Load the plugin's FTL strings (must happen before any string is fetched)
 	initLocale();
 
-	// Register the preferences pane
 	Zotero.PreferencePanes.register({
 		pluginID: addon.data.config.addonID,
 		id: "zctr-prefpane",
 		src: rootURI + "content/preferences.xhtml",
 		label: getString("addon-name"),
 		image: `chrome://${addon.data.config.addonRef}/content/icons/favicon.svg`,
-		// Absolute URL required: resolveURI() resolves relative paths against
-		// the addon package ROOT (.../zc-tr.xpi!/), but the stylesheet lives in
-		// the content/ directory - a bare "preferences.css" would 404.
 		stylesheets: [rootURI + "content/preferences.css"],
 	});
 	zlog.debug("PreferencePanes registered");
 
-	// Register reader context menu entries (global, not per window)
 	registerViewMenu();
 	registerAnnotationMenu();
 	registerHotkey();
 
-	// Initialize per-window toolkits
 	await Promise.all(
 		Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
 	);
@@ -76,11 +69,6 @@ async function onAppShutdown(): Promise<void> {
 	addon.data.alive = false;
 }
 
-/**
- * Preference UI events dispatcher.
- * Called from preferences.xhtml onload:
- *   onload="Zotero.ZCTr.hooks.onPrefsEvent('load', { window })"
- */
 async function onPrefsEvent(
 	type: string,
 	data: { [key: string]: unknown },

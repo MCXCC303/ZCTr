@@ -1,11 +1,4 @@
-/**
- * Shortcut combo utilities.
- *
- * A combo is a normalized string like "ctrl+alt+t" (modifiers first in the
- * order ctrl/alt/shift/meta, then the key). Shared by the preferences pane
- * (recording a combo into the input) and the reader hotkey handler
- * (matching keydown events against the stored combo).
- */
+// Combo format: lowercase ctrl/alt/shift/meta modifiers, then the key, e.g. "ctrl+alt+t".
 
 export interface Shortcut {
 	ctrl: boolean;
@@ -27,7 +20,6 @@ const MODIFIER_ALIASES: Record<string, "ctrl" | "alt" | "shift" | "meta"> = {
 	windows: "meta",
 };
 
-/** Parse a combo string; null when it has no (non-modifier) key. */
 export function parseShortcut(combo: string): Shortcut | null {
 	const parts = combo
 		.toLowerCase()
@@ -45,7 +37,6 @@ export function parseShortcut(combo: string): Shortcut | null {
 	return shortcut.key ? shortcut : null;
 }
 
-/** Whether a keydown event matches a combo string. */
 export function matchesShortcut(event: KeyboardEvent, combo: string): boolean {
 	const shortcut = parseShortcut(combo);
 	if (!shortcut) {
@@ -62,10 +53,7 @@ export function matchesShortcut(event: KeyboardEvent, combo: string): boolean {
 	return event.key.toLowerCase() === shortcut.key;
 }
 
-/**
- * Serialize a keydown event into a combo string.
- * Returns "" when the event is only a modifier key (no actual key).
- */
+/** Serialize a keydown event into a combo string; "" for a bare modifier key. */
 export function serializeShortcut(event: KeyboardEvent): string {
 	const key = event.key.toLowerCase();
 	if (["control", "alt", "shift", "meta"].includes(key)) {

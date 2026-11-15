@@ -1,8 +1,3 @@
-/**
- * Target language model. The stored pref value is the ISO `code`; the prompt
- * uses the natural-language `name` (better understood by LLMs and stable for
- * prompt caching); the UI dropdown shows the localized `labelId` message.
- */
 export const TARGET_LANGUAGES = [
 	{code: "zh", labelId: "lang-zh", name: "Chinese"},
 	{code: "en", labelId: "lang-en", name: "English"},
@@ -21,7 +16,6 @@ export const TARGET_LANGUAGES = [
 
 export type TargetLanguageCode = (typeof TARGET_LANGUAGES)[number]["code"];
 
-/** Map a stored language code to its natural-language name for prompts. */
 export function getTargetLanguageName(code: string): string {
 	return (
 		TARGET_LANGUAGES.find((l) => l.code === code)?.name || code

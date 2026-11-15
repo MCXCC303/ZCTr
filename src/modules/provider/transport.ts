@@ -1,13 +1,3 @@
-/**
- * Provider transport - OpenAI-compatible /chat/completions requests
- * (one-shot and SSE streaming) and the Ollama connectivity test.
- *
- * Pure transport: receives already-built messages and the runtime config,
- * maps them through the adapter, performs HTTP, parses SSE. It does NOT
- * know about context, terminology or profiles (see
- * ZCTr-modules-ARCHITECTURE.md §2.3).
- */
-
 import type {ProviderConfig} from "./types";
 import {buildProviderPayloadParams} from "./adapter";
 import type {TranslationRuntimeConfig} from "../runtime/runtime-config";
@@ -24,7 +14,6 @@ export interface OllamaModelInfo {
 	parameterSize?: string;
 }
 
-/** Resolve the request base URL for a provider. */
 export function getApiBaseUrl(provider: ProviderConfig): string {
 	switch (provider.type) {
 		case "deepseek":
@@ -40,20 +29,12 @@ function buildHeaders(provider: ProviderConfig): Record<string, string> {
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
 	};
-	// Ollama's OpenAI-compatible endpoint accepts any key (or none)
 	if (provider.apiKey && provider.type !== "ollama") {
 		headers.Authorization = `Bearer ${provider.apiKey}`;
 	}
 	return headers;
 }
 
-/**
- * Translate via an OpenAI-compatible /chat/completions endpoint
- * (non-streaming). Returns the assistant message content.
- *
- * `stop` sequences are forwarded to the provider when given (used as a hard
- * stop at the target's closing marker - see translation/prompt.ts).
- */
 function debugDumpRequest(
 	provider: ProviderConfig,
 	url: string,
@@ -61,9 +42,6 @@ function debugDumpRequest(
 	messages: ChatMessage[],
 	stop?: string[],
 ): void {
-	// One log line per source line, prefixed by role, so the structure is
-	// readable at a glance in the debug console (which field leaked, which
-	// block was attached, where the target sits).
 	zlog.debug("======================== provider request ========================");
 	zlog.debug(`url=${url} model=${provider.model} type=${provider.type} stop=${JSON.stringify(stop ?? [])}`);
 	zlog.debug(`payload=${JSON.stringify(payload)}`);
@@ -77,6 +55,11 @@ function debugDumpRequest(
 	zlog.debug("====================== end provider request ======================");
 }
 
+/**
+ * Non-streaming translation; returns the assistant message content.
+ * `stop` sequences are forwarded as a hard stop at the target's closing
+ * marker (see translation/prompt.ts).
+ */
 export async function translateText(
 	provider: ProviderConfig,
 	messages: ChatMessage[],
@@ -86,7 +69,7 @@ export async function translateText(
 	const url = `${getApiBaseUrl(provider)}/chat/completions`;
 	const {payload, ignored} = buildProviderPayloadParams(provider.type, runtimeConfig);
 	if (ignored.length) {
-		zlog.warn(`Provider 不支持以下参数，已安全忽略: ${ignored.join(", ")}`);
+		zlog.warn(`Provider does not support these parameters, ignored: ${ignored.join(", ")}`);
 	}
 	zlog.debug(`provider request: model=${provider.model} type=${provider.type} messages=${messages.length} target_chars=${messages[messages.length - 1]?.content?.length ?? 0}`);
 	debugDumpRequest(provider, url, payload, messages, stop);
@@ -128,12 +111,9 @@ export async function translateText(
 }
 
 /**
- * Translate with streaming (SSE) output. `onDelta` is invoked with each
- * content chunk as it arrives. Resolves with the full translation when the
- * stream finishes.
- *
- * `stop` sequences are forwarded to the provider when given (see
- * translateText).
+ * Streaming (SSE) translation; `onDelta` receives each content chunk,
+ * resolves with the full translation when the stream finishes.
+ * `stop` sequences are forwarded as in `translateText`.
  */
 export async function translateTextStreaming(
 	provider: ProviderConfig,
@@ -145,10 +125,9 @@ export async function translateTextStreaming(
 	const url = `${getApiBaseUrl(provider)}/chat/completions`;
 	const {payload, ignored} = buildProviderPayloadParams(provider.type, runtimeConfig);
 	if (ignored.length) {
-		zlog.warn(`Provider 不支持以下参数，已安全忽略: ${ignored.join(", ")}`);
+		zlog.warn(`Provider does not support these parameters, ignored: ${ignored.join(", ")}`);
 	}
 	zlog.debug(`provider request: model=${provider.model} type=${provider.type} messages=${messages.length} target_chars=${messages[messages.length - 1]?.content?.length ?? 0}`);
-	// Full debugging dump (see translateText) - streaming variant.
 	debugDumpRequest(provider, url, {...payload, stream: true}, messages, stop);
 
 	let response: Response;
@@ -191,7 +170,7 @@ export async function translateTextStreaming(
 	for await (const chunk of body) {
 		buffer += decoder.decode(chunk as Uint8Array, {stream: true});
 
-		// Parse complete SSE lines, keep the trailing partial line in the buffer
+		// SSE frames are newline-separated; keep the trailing partial line buffered.
 		let newlineIndex: number;
 		while ((newlineIndex = buffer.indexOf("\n")) >= 0) {
 			const line = buffer.slice(0, newlineIndex).trim();
@@ -212,7 +191,7 @@ export async function translateTextStreaming(
 					onDelta(delta);
 				}
 			} catch {
-				// Incomplete JSON in a chunk; ignore
+				// Chunk may carry incomplete JSON; ignore it.
 			}
 		}
 	}
@@ -224,10 +203,7 @@ export async function translateTextStreaming(
 	return full;
 }
 
-/**
- * Check that a local Ollama server is reachable and list its installed
- * models via `GET /api/tags`.
- */
+/** List a local Ollama server's installed models via `GET /api/tags`. */
 export async function testOllamaConnection(
 	port: number,
 ): Promise<OllamaModelInfo[]> {

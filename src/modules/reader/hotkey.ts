@@ -1,18 +1,3 @@
-/**
- * ZCTr translate hotkey.
- *
- * Pressing the configured shortcut (pref `shortcut`, e.g. "ctrl+alt+t";
- * empty disables it) while a PDF reader is focused translates the current
- * text selection immediately - no context menu needed.
- *
- * The keydown listener lives on the Zotero main window (document capture
- * phase), not on the reader iframe: key events from any nested iframe
- * bubble through the main window, so this works regardless of where the
- * focus is inside the reader (PDF view, sidebar, toolbar). The reader
- * whose window chain contains the event target is located via
- * `Zotero.Reader._readers`, and the popup is positioned at the selection.
- */
-
 import {
 	getAnnotationText,
 	getReaderContext,
@@ -25,10 +10,8 @@ import {getPref, PREFS} from "../../utils/prefs";
 import {matchesShortcut, parseShortcut} from "../../utils/shortcut";
 import * as zlog from "../../utils/logger";
 
-/** Main windows that already have a keydown listener attached. */
 const hotkeyWindows = new Set<Window>();
 
-/** Whether the keydown target is an editable field. */
 function isEditableTarget(target: EventTarget | null): boolean {
 	const el = target as HTMLElement | null;
 	if (!el || typeof el.closest !== "function") {
@@ -37,22 +20,11 @@ function isEditableTarget(target: EventTarget | null): boolean {
 	return !!el.closest("input, textarea, select, [contenteditable='true']");
 }
 
-/**
- * Whether the combo includes at least one modifier key. Modifier combos are
- * never plain text input, so triggering inside an editable field (e.g. an
- * annotation comment box) is intentional; modifier-less combos would fire
- * while typing and are only allowed outside editable fields.
- */
 function hasModifier(combo: string): boolean {
 	const shortcut = parseShortcut(combo);
 	return !!shortcut && (shortcut.ctrl || shortcut.alt || shortcut.shift || shortcut.meta);
 }
 
-/**
- * Find the reader whose iframe window chain contains the event target
- * (the focused element). The target may live in the outer reader iframe or
- * in a nested iframe (e.g. the pdf.js viewer).
- */
 function findReaderForEvent(event: KeyboardEvent): ReaderLike | null {
 	const targetWin = (event.target as Element | null)?.ownerDocument?.defaultView;
 	if (!targetWin) {
@@ -80,9 +52,8 @@ function findReaderForEvent(event: KeyboardEvent): ReaderLike | null {
 
 function handleWindowKeyDown(event: KeyboardEvent): void {
 	try {
-		// ESC closes the translation popup. Not prevented/defaulted so the
-		// reader's own Escape handling (find popup, fullscreen, etc.) still
-		// works; closing an already-closed popup is a no-op.
+		// Close the popup without preventDefault: the reader's own Escape
+		// handling (find bar, fullscreen) must still run.
 		if (event.key === "Escape") {
 			closePopup();
 			return;
@@ -91,8 +62,7 @@ function handleWindowKeyDown(event: KeyboardEvent): void {
 		if (!combo || !matchesShortcut(event, combo)) {
 			return;
 		}
-		// In editable fields (annotation comments, find box, etc.) only allow
-		// modifier combos: they are intentional shortcuts, never text input
+		// Only modifier combos may fire in editable fields (comments, find box).
 		if (isEditableTarget(event.target) && !hasModifier(combo)) {
 			return;
 		}
@@ -104,9 +74,8 @@ function handleWindowKeyDown(event: KeyboardEvent): void {
 		if (!context) {
 			return;
 		}
-		// Prefer the live text selection; fall back to the currently selected
-		// annotation (creating a highlight clears the selection ranges, so the
-		// annotation text is what remains translatable)
+		// Creating a highlight clears the selection ranges, so fall back to
+		// the selected annotation's text.
 		let text = getSelectedText(context.view);
 		if (!text) {
 			const view = context.view as any;
@@ -120,8 +89,7 @@ function handleWindowKeyDown(event: KeyboardEvent): void {
 		}
 		zlog.debug(`hotkey: translating selection (${text.length} chars)`);
 
-		// Consume the shortcut so the reader's own key handling (e.g. find
-		// popup shortcuts) does not also react
+		// Consume the shortcut so the reader's own key handling does not react.
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -137,11 +105,9 @@ function handleWindowKeyDown(event: KeyboardEvent): void {
 }
 
 /**
- * Protect copying text from the ZCTr popup: the reader's focus manager
- * listens for `copy` on its window (capture) and, when an annotation is
- * selected, hijacks Ctrl+C to copy the annotation instead. Stopping the
- * event at the main-window document (which is earlier in the capture path)
- * lets the normal copy of the selected translation proceed.
+ * The reader's focus manager hijacks Ctrl+C when an annotation is selected;
+ * stopping propagation at the main document (earlier in the capture path)
+ * keeps the normal copy of the popup text.
  */
 function handleWindowCopy(event: ClipboardEvent): void {
 	const target = event.target as Element | null;
@@ -154,17 +120,17 @@ function handleWindowCopy(event: ClipboardEvent): void {
 	}
 }
 
-/** Attach the hotkey listener to a main window (idempotent). */
 export function registerWindowHotkey(win: Window): void {
 	if (hotkeyWindows.has(win)) {
 		return;
 	}
 	hotkeyWindows.add(win);
+	// Capture phase on the main window: key events from nested iframes
+	// (PDF view, sidebar) bubble up to it.
 	win.document.addEventListener("keydown", handleWindowKeyDown, true);
 	win.document.addEventListener("copy", handleWindowCopy, true);
 }
 
-/** Detach the hotkey listener from a main window (idempotent). */
 export function unregisterWindowHotkey(win: Window): void {
 	if (!hotkeyWindows.has(win)) {
 		return;
@@ -174,7 +140,6 @@ export function unregisterWindowHotkey(win: Window): void {
 	win.document.removeEventListener("copy", handleWindowCopy, true);
 }
 
-/** Attach the hotkey listener to all currently open main windows. */
 export function registerHotkey(): void {
 	for (const win of Zotero.getMainWindows()) {
 		registerWindowHotkey(win);

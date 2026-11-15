@@ -1,45 +1,3 @@
-/**
- * ZCTr translation cache - per-article LRU queues.
- *
- * Users often translate the same passage repeatedly; a local hit returns
- * the previous translation instantly without a provider request.
- *
- * Every article (PDF attachment item) has its own in-memory LRU queue and,
- * when persistence is enabled, its own persisted queue file, so that caching
- * many articles does not cause each article's entries to evict each other.
- *
- * Layout:
- * - In memory:   Map<itemID, Map<key, entry>> (Map order = recency, tail =
- *   most recent). Each article's queue is capped by `cacheLimit`.
- * - On disk:     one JSON file per article in the Zotero data directory
- *   (zctr/cache/<itemID>.json), capped by `cachePersistLimit`. Files are
- *   loaded lazily when the article is first queried and writes for the same
- *   article are serialized so concurrent puts cannot interleave.
- *
- * Configuration is read from prefs on every access:
- * - cacheLimit:        per-article in-memory queue length (default 50)
- * - cachePersistLimit: how many most-recent entries are written to the
- *   article's persisted file (default 100)
- * - cachePersist:      whether entries are persisted to the Zotero data
- *   directory so they survive restarts
- * A limit of -1 means unlimited.
- *
- * The cache key is sha256(canonical JSON of source text, target language,
- * provider id, prompt version and the effective runtime config). Switching
- * providers, changing sampling parameters or bumping the prompt version
- * therefore produces fresh translations. Entries whose item id cannot be
- * resolved fall back to a shared default partition.
- *
- * Each build writes into its own versioned subdirectory (see
- * src/utils/build-info.ts): releases use `cache-v<version>`, development
- * builds `cache-v<version>+g<commit>`. The legacy `zctr/cache` directory is
- * never read or written by this version, so upgrading or rolling back keeps
- * the other build's cache untouched.
- *
- * Note: the previous single-file cache (zctr/cache.json) is no longer read;
- * the per-article format is incompatible and the old file is left untouched.
- */
-
 import {getPref, PREFS} from "../../utils/prefs";
 import {getCacheSubdirName} from "../../utils/build-info";
 import {TRANSLATION_PROMPT_VERSION} from "./prompt";
@@ -58,10 +16,8 @@ import type {MatchedTermSet} from "../terminology/model";
 import * as zlog from "../../utils/logger";
 
 export interface TranslationCacheEntry {
-	/** Deterministic cache key (sha256 of the canonical request material),
-	 * persisted so lookups do not recompute it. */
+	/** Deterministic sha256 of the canonical request material. */
 	key: string;
-	/** The original (unnormalized) text, as sent to the provider. */
 	text: string;
 	targetLang: string;
 	providerId: string;
@@ -70,10 +26,7 @@ export interface TranslationCacheEntry {
 	runtime?: Record<string, unknown>;
 }
 
-/**
- * SHA-256 of a UTF-8 string, hex-encoded, via the synchronous Firefox
- * nsICryptoHash (keeps cache get/put synchronous, unlike crypto.subtle).
- */
+/** Synchronous Firefox nsICryptoHash (crypto.subtle would force the cache API async). */
 function sha256Hex(input: string): string {
 	const hash = Cc["@mozilla.org/security/hash;1"].createInstance(
 		Ci.nsICryptoHash,
@@ -95,18 +48,12 @@ const DEFAULT_LIMIT = 50;
 const DEFAULT_PERSIST_LIMIT = 100;
 const CACHE_DIR_NAME = "zctr";
 
-/** Fallback partition for entries without a resolvable item id. */
 const DEFAULT_PARTITION = 0;
 
 class TranslationCache {
-	/** itemID -> per-article LRU queue. */
 	private queues = new Map<number, Map<string, TranslationCacheEntry>>();
-	/** itemID -> per-article persisted-load promise (lazy, once per article). */
 	private loadPromises = new Map<number, Promise<void>>();
-	/**
-	 * itemID -> chained save promise. Serializes writes to the same article's
-	 * file so a slow earlier write cannot overwrite a newer one out of order.
-	 */
+	/** itemID -> chained save promise: writes to one article's file must not interleave. */
 	private saveChains = new Map<number, Promise<void>>();
 
 	private key(
@@ -117,26 +64,6 @@ class TranslationCache {
 		context: TranslationContext,
 		terminology?: MatchedTermSet | null,
 	): string {
-		// NFC-normalize the source text so visually identical text whose
-		// characters are encoded as precomposed vs. decomposed (e.g. U+00C5
-		// vs U+0041+U+030A) maps to the same key. PDF text extraction can
-		// produce either form, and mixing them used to evict the cache.
-		// NFC (not NFKC) only merges canonically-equivalent forms, so
-		// visually distinct text never collides.
-		//
-		// `stream` is deliberately excluded: it is transport behavior and
-		// does not change the semantic input (runtime canonical form omits
-		// it). `model` is intentionally not part of the key yet - switching
-		// models within the same provider entry is a known limitation
-		// (deferred, see ZCTr-context-M1-plan.md §8).
-		//
-		// The context fingerprint covers every attached context field
-		// (policy, document, local); the same selection under a different
-		// abstract / local context / policy must not hit the old entry
-		// (architecture §15). The termbase fingerprint covers the injected
-		// matched terms: a termbase edit must not silently reuse a
-		// translation generated under a different terminology
-		// (terminology architecture §19).
 		const contextFingerprint = hasAttachedContext(context)
 			? sha256Hex(JSON.stringify(canonicalContext(context)))
 			: null;
@@ -150,10 +77,6 @@ class TranslationCache {
 				}
 			: null;
 		const material = {
-			// v3: local-context extraction self-consistency + fingerprint
-			// whitespace normalization (selection/highlight unification).
-			// Bumped once so stale entries generated under the leaky context
-			// (v2) are never served again.
 			v: 3, // cache key schema version
 			sourceText: text.normalize("NFC"),
 			targetLang,
@@ -171,18 +94,15 @@ class TranslationCache {
 	private resolveLimit(value: unknown, fallback: number): number {
 		const v = value as number;
 		if (v === -1) {
-			// Unlimited
 			return Infinity;
 		}
 		return Number.isFinite(v) && v > 0 ? v : fallback;
 	}
 
-	/** Per-article in-memory queue limit. */
 	private getMemoryLimit(): number {
 		return this.resolveLimit(getPref(PREFS.CACHE_LIMIT), DEFAULT_LIMIT);
 	}
 
-	/** How many most-recent entries each article's persisted file keeps. */
 	private getPersistLimit(): number {
 		return this.resolveLimit(
 			getPref(PREFS.CACHE_PERSIST_LIMIT),
@@ -241,10 +161,6 @@ class TranslationCache {
 		return queue ?? null;
 	}
 
-	/**
-	 * Load the persisted entries of one article (idempotent; callers can
-	 * await or fire-and-forget). Each article is loaded at most once.
-	 */
 	load(itemID: number): Promise<void> {
 		itemID = this.normalizeItemID(itemID);
 		if (!this.loadPromises.has(itemID)) {
@@ -288,11 +204,6 @@ class TranslationCache {
 		}
 	}
 
-	/**
-	 * Queue a save of one article's file. Writes for the same article are
-	 * chained so they run in order; each write snapshots the queue at its
-	 * execution time, so the last queued write persists the newest state.
-	 */
 	private save(itemID: number): void {
 		if (!this.shouldPersist()) {
 			return;
@@ -305,12 +216,6 @@ class TranslationCache {
 				if (!file || !queue) {
 					return;
 				}
-				// Persist only the most-recent entries, so the on-disk queue
-				// is capped independently of the memory queue. Map order is
-				// oldest -> newest (see trim(): the head is evicted first), so
-				// the LAST N entries are the recent ones; keeping them in that
-				// order also rebuilds the same LRU order on reload (doLoad
-				// appends in file order).
 				const persistLimit = this.getPersistLimit();
 				const toSave = [...queue.values()].slice(-persistLimit);
 				await Zotero.File.putContentsAsync(file, JSON.stringify(toSave));
@@ -323,7 +228,6 @@ class TranslationCache {
 		this.saveChains.set(itemID, next);
 	}
 
-	/** Evict the oldest entries of one article until its queue fits its limit. */
 	private trim(itemID: number): void {
 		const queue = this.getQueue(itemID);
 		if (!queue) {
@@ -338,10 +242,6 @@ class TranslationCache {
 		}
 	}
 
-	/**
-	 * Look up a cached translation for an article. Returns null on miss; on
-	 * hit, moves the entry to the most-recent position (LRU).
-	 */
 	async get(
 		itemID: number | undefined,
 		text: string,
@@ -370,7 +270,6 @@ class TranslationCache {
 		return entry.translation;
 	}
 
-	/** Store (or refresh) a translation for an article, evicting if needed. */
 	async put(
 		itemID: number | undefined,
 		text: string,
@@ -400,12 +299,11 @@ class TranslationCache {
 		zlog.debug(`cache put: item=${itemID} text_len=${text.length} lang=${targetLang} provider=${providerId} key=${key.slice(0, 12)}`);
 		this.trim(itemID);
 		if (this.shouldPersist()) {
-			// Fire-and-forget; save() logs its own failures
+			// Fire-and-forget; failures are logged in save()
 			this.save(itemID);
 		}
 	}
 
-	/** Total number of cached entries across all articles. */
 	get size(): number {
 		let total = 0;
 		for (const queue of this.queues.values()) {
@@ -415,5 +313,4 @@ class TranslationCache {
 	}
 }
 
-/** Session-wide cache instance. */
 export const translationCache = new TranslationCache();

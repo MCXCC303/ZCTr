@@ -1,8 +1,3 @@
-/**
- * OpenAI-compatible provider form: API Base URL + model (free text).
- * The API key is a shared field managed by the preferences pane.
- */
-
 import {getWin, inputValue, type ProviderForm, setInputValue, setVisible,} from "../provider-form";
 import type {ProviderConfig} from "../../provider/types";
 import {getString} from "../../../utils/locale";

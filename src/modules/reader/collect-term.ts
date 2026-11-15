@@ -1,35 +1,3 @@
-/**
- * "+ 收录" closed loop UI - files the current popup selection + translation
- * as a term into a user-chosen termbase.
- *
- * Flow (user-confirmed strategy):
- *   1. popup footer button -> this module;
- *   2. a NEW WINDOW that is a real CHROME window (`Services.ww.openWindow`
- *      with the "chrome" feature) whose content is INJECTED by the plugin
- *      scope. It shows: termbase radio list (default = active termbase, else
- *      the first termbase whose target language matches the translation
- *      target - the user may pick any), source term (prefilled with the
- *      selection), target term (prefilled with the translation), status,
- *      optional note;
- *   3. saving runs the layer validation (term-actions): language-pair
- *      conflicts and duplicates are REFUSED with an alert dialog and the
- *      form stays open for another choice.
- *
- * Why inject into an about:blank CHROME window instead of loading a file or
- * using the toolkit Dialog:
- *   - the toolkit Dialog opens an about:blank window WITHOUT the "chrome"
- *     flag (a content window), which Zotero 10 beta renders with INERT form
- *     controls (no dropdown popups, radios do not toggle);
- *   - navigating a chrome window directly to a jar: content URL renders a
- *     BLANK window (Zotero loads plugin panels by fetch+inject, not by
- *     top-level jar navigation).
- *   A chrome-flag about:blank window with injected controls is the same kind
- * of window Zotero uses for its own secondary windows, so it is interactive.
- *
- * Layering: this module is reader UI; every termbase read/write goes
- * through ../translation/term-actions (reader -> translation -> terminology).
- */
-
 import {getString} from "../../utils/locale";
 import {getPref, PREFS} from "../../utils/prefs";
 import type {ReaderEntry} from "../../types/reader";
@@ -43,8 +11,6 @@ import {
 
 const XHTML_NS = "http://www.w3.org/1999/xhtml";
 
-/** Fluent ids of the status radio labels; resolved when the form is built so
- * the plugin locale bundle is already initialized. */
 const STATUS_LABEL_IDS = {
 	preferred: "collect-status-preferred",
 	admitted: "collect-status-admitted",
@@ -53,8 +19,6 @@ const STATUS_LABEL_IDS = {
 } as const;
 const STATUSES = ["preferred", "admitted", "forbidden", "deprecated"] as const;
 
-/** Theme colors resolved from the main Zotero window (the same tokens the
- * settings pane/popup use: --material-background, --fill-primary, ...). */
 interface ThemeColors {
 	bg: string;
 	text: string;
@@ -76,18 +40,6 @@ function toHex(cssColor: string): string {
 	);
 }
 
-/** Read the effective light/dark colors from Zotero's main window so the
- * injected window matches the USER-CHOSEN theme exactly (Zotero. The tokens
- * themselves are only defined in Zotero's own documents, so we resolve them
- * from the main window's computed style rather than relying on our window
- * having the theme CSS).
- *
- * Note on polarity: the main window's <html> background is usually
- * transparent (the theme paints <body>/inner containers), so we prefer the
- * measured BODY background luminance; when no background is measurable we
- * fall back to the TEXT luminance with the correct polarity (dark text -> a
- * LIGHT theme; light text -> a DARK theme).
- */
 function resolveThemeColors(): ThemeColors {
 	const FALLBACK_DARK = {bg: "#272c31", text: "#d0d0d0", secondary: "#9a9a9a", border: "#4a4a4a"};
 	const FALLBACK_LIGHT = {bg: "#ffffff", text: "#1a1a1a", secondary: "#555555", border: "#c8c8c8"};
@@ -106,7 +58,6 @@ function resolveThemeColors(): ThemeColors {
 	try {
 		const mainWin = Zotero.getMainWindow();
 		const doc = mainWin.document;
-		// Prefer a measurable background: <html> then <body>.
 		for (const node of [doc.documentElement, doc.body]) {
 			if (!node) {
 				continue;
@@ -128,12 +79,11 @@ function resolveThemeColors(): ThemeColors {
 	} catch {
 		// Fall through to the scheme defaults below.
 	}
-	// Definitely-a-background is the strongest signal; otherwise use text.
+	// Judge by background; when it is unknown, invert the text luminance.
 	let dark: boolean;
 	if (bg && bg !== "#000000") {
 		dark = luminance(bg) < 0.5;
 	} else if (text) {
-		// A surface we cannot read; judge by text: dark text -> light theme.
 		dark = luminance(text) > 0.5;
 	} else {
 		dark = false;
@@ -148,7 +98,6 @@ function resolveThemeColors(): ThemeColors {
 	};
 }
 
-/** Build the injected stylesheet, themed to the resolved colors. */
 function buildFormCss(theme: ThemeColors): string {
 	const listBg = theme.dark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)";
 	return `
@@ -187,7 +136,6 @@ function log(...args: unknown[]): void {
 	}
 }
 
-/** Non-throwing alert; prefers the given window as parent. */
 function alert(win: Window | null, title: string, message: string): void {
 	try {
 		Services.prompt.alert((win ?? null) as any, title, message);
@@ -195,12 +143,11 @@ function alert(win: Window | null, title: string, message: string): void {
 		try {
 			win?.alert(message);
 		} catch {
-			log("[ZCTr] 收录弹窗失败:", title, message);
+			log("[ZCTr] Failed to pop the collect window:", title, message);
 		}
 	}
 }
 
-/** Document language from item metadata; undefined when unknown. */
 function documentLanguage(itemID: number | undefined): string | undefined {
 	if (!itemID) {
 		return undefined;
@@ -218,13 +165,10 @@ function documentLanguage(itemID: number | undefined): string | undefined {
 }
 
 export interface CollectDraft {
-	/** The selected source text to prefill. */
 	sourceText: string;
-	/** The translation result to prefill (optional). */
 	targetText?: string;
 }
 
-/** Form data gathered by the window, handed back to the save callback. */
 interface CollectFormData {
 	termbaseId: string;
 	sourceText: string;
@@ -233,10 +177,7 @@ interface CollectFormData {
 	note?: string;
 }
 
-/**
- * Open the collect window. Resolves true when a term was saved (window
- * closed by the user after a successful collect).
- */
+/** Resolves true only when a term was actually saved. */
 export async function openCollectTermDialog(
 	entry: ReaderEntry,
 	draft: CollectDraft,
@@ -249,7 +190,7 @@ export async function openCollectTermDialog(
 	try {
 		termbases = await listCollectableTermbases();
 	} catch (error) {
-		log("[ZCTr] 收录：加载术语库失败", error);
+		log("[ZCTr] Failed to load local termbase: ", error);
 		alert(
 			parentWin,
 			getString("collect-title"),
@@ -294,8 +235,7 @@ export async function openCollectTermDialog(
 				{docLanguage, targetLanguage},
 			);
 
-		// A CHROME window (the "chrome" feature is what makes its form
-		// controls interactive in Zotero 10). Content is injected below.
+		// The "chrome" feature is required for the form controls to be interactive.
 		const win = Services.ww.openWindow(
 			Zotero.getMainWindow() as any,
 			"about:blank",
@@ -326,9 +266,9 @@ export async function openCollectTermDialog(
 					save,
 					finish,
 				});
-				log("[ZCTr] 收录窗口已打开");
+				log("[ZCTr] Opened term collect window");
 			} catch (error) {
-				log("[ZCTr] 收录窗口构建失败:", error);
+				log("[ZCTr] Failed to build term collect window:", error);
 				alert(
 					win,
 					getString("collect-title"),
@@ -339,7 +279,6 @@ export async function openCollectTermDialog(
 				finish(false);
 			}
 		};
-		// about:blank may already be ready; otherwise wait for the load event.
 		const doc = win.document;
 		if (doc && (doc.readyState === "complete" || doc.readyState === "interactive")) {
 			build();
@@ -353,10 +292,6 @@ export async function openCollectTermDialog(
 	});
 }
 
-/**
- * Inject the collect form into the given about:blank chrome window. All logic
- * stays in the plugin scope; the window is just the visual host.
- */
 function buildCollectWindow(
 	win: Window,
 	data: {
@@ -381,14 +316,12 @@ function buildCollectWindow(
 		tag: K,
 	): HTMLElementTagNameMap[K] => doc.createElementNS(XHTML_NS, tag) as HTMLElementTagNameMap[K];
 
-	// Root + footer
 	const root = el("div");
 	root.id = "root";
 	const footer = el("div");
 	footer.id = "footer";
 	((doc.body ?? doc.documentElement) as HTMLElement).append(root, footer);
 
-	// Section: termbase radio list
 	const section = el("div");
 	section.className = "section";
 	section.textContent = getString("collect-section-termbases");
@@ -421,14 +354,12 @@ function buildCollectWindow(
 		defaultRadio.checked = true;
 	}
 
-	// Language hints
 	const pairHint = el("div");
 	pairHint.className = "hint";
 	const langHint = el("div");
 	langHint.className = "hint";
 	root.append(pairHint, langHint);
 
-	// Source / target / note fields
 	const makeRow = (labelText: string, input: HTMLInputElement): void => {
 		const row = el("div");
 		row.className = "row";
@@ -449,7 +380,6 @@ function buildCollectWindow(
 	tgtInput.placeholder = getString("collect-field-target-placeholder");
 	makeRow(getString("collect-field-target"), tgtInput);
 
-	// Status radio group
 	const stRow = el("div");
 	stRow.className = "row";
 	const stLabel = el("label");
@@ -475,13 +405,11 @@ function buildCollectWindow(
 	noteInput.placeholder = getString("collect-field-note-placeholder");
 	makeRow(getString("collect-field-note"), noteInput);
 
-	// Footer hint
 	const footerHint = el("div");
 	footerHint.className = "hint";
 	footerHint.textContent = getString("collect-hint-footer");
 	root.append(footerHint);
 
-	// Buttons
 	const cancelBtn = el("button");
 	cancelBtn.textContent = getString("collect-button-cancel");
 	const collectBtn = el("button");
@@ -533,12 +461,12 @@ function buildCollectWindow(
 		});
 		if (!res.ok) {
 			log(
-				`[ZCTr] 收录被拒绝: reason=${res.reason} termbase=${checkedTermbaseId() || "(未选)"}`,
+				`[ZCTr] Failed to collect term: reason=${res.reason} termbase=${checkedTermbaseId() || "(none)"}`,
 			);
 			alert(win, getString("collect-alert-rejected"), res.message);
 			return;
 		}
-		log(`[ZCTr] 术语已收录: ${res.termbaseName} / ${res.conceptId}`);
+		log(`[ZCTr] Term successfully collected: ${res.termbaseName} / ${res.conceptId}`);
 		data.finish(true);
 		win.close();
 	};

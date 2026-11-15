@@ -1,12 +1,3 @@
-/**
- * Neutral structural types for the Zotero Reader integration.
- *
- * These are the only reader-facing types domain modules may depend on
- * (see ZCTr-modules-ARCHITECTURE.md §2): they describe the *view surface*
- * the context engine needs (selection ranges, document, iframe window)
- * without coupling to the reader DOM implementation.
- */
-
 export type ViewLike = {
 	_iframeWindow?: Window;
 };

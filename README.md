@@ -29,7 +29,7 @@ This is an extremely simple & powerful translate plugin for Zotero.
 
 ## Terminology (Termbase)
 
-Manage termbases in `Settings → ZCTr → 术语表`:
+Manage termbases in `Settings → ZCTr → Termbase`:
 
 - Create a termbase per language pair (e.g. `en → zh-CN`), or import JSON / TSV / CSV / TBX files. Local termbases are able to export as JSON or TBX.
 - Matched source terms are injected into the translation request as reference material (with preferred/forbidden status support), so translations follow your terminology.

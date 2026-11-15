@@ -1,10 +1,3 @@
-/**
- * Ollama provider form: port + model dropdown + connectivity test.
- *
- * The model dropdown stays disabled until the "Test Connection" button
- * succeeds; the detected models then become its options.
- */
-
 import {getDoc, getWin, inputValue, type ProviderForm, selectValue, setInputValue, setVisible,} from "../provider-form";
 import {
 	OLLAMA_DEFAULT_PORT,
@@ -28,12 +21,6 @@ function modelSelect(): HTMLSelectElement | null {
 	) as HTMLSelectElement | null) ?? null;
 }
 
-/**
- * Reset the model dropdown to the disabled "untested" state.
- * When editing an existing Ollama provider, the previously saved model is
- * shown as a placeholder so the user knows what will be re-selected after
- * the connectivity test.
- */
 function resetModelSelect(preferredModel?: string): void {
 	const select = modelSelect();
 	if (!select) {
@@ -57,11 +44,6 @@ function resetModelSelect(preferredModel?: string): void {
 	select.disabled = true;
 }
 
-/**
- * Fill the model dropdown with the models reported by the local Ollama
- * service. `preferred` (e.g. the previously saved model) is selected when
- * present in the list, otherwise the first model is selected.
- */
 function populateModelSelect(
 	models: OllamaModelInfo[],
 	preferred?: string,
@@ -114,8 +96,6 @@ async function testConnection(): Promise<void> {
 	try {
 		const models = await testOllamaConnection(portValue);
 		if (models.length) {
-			// Enable the model dropdown with the detected models, keeping the
-			// previously saved model selected when available
 			populateModelSelect(
 				models,
 				selectValue("zctr-input-model-ollama") || undefined,
@@ -154,8 +134,6 @@ export const ollamaForm: ProviderForm = {
 			"zctr-input-port",
 			String(provider?.port || OLLAMA_DEFAULT_PORT),
 		);
-		// The model dropdown is disabled until the connectivity test
-		// succeeds; keep the previously saved model as a placeholder
 		resetModelSelect(provider?.model || undefined);
 		const status = statusEl();
 		if (status) {
@@ -164,8 +142,7 @@ export const ollamaForm: ProviderForm = {
 	},
 
 	validate(base: ProviderConfig): ProviderConfig | null {
-		// The model dropdown is only usable after the connectivity test has
-		// populated it with the models of the local Ollama service
+		// The dropdown stays empty until a connectivity test populates it.
 		const model = selectValue("zctr-input-model-ollama").trim();
 		if (!model) {
 			getWin()?.alert(getString("ollama-error-select-model"));

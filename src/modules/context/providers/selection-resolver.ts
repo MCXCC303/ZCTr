@@ -1,14 +1,3 @@
-/**
- * SelectionResolver - defensive access to the reader's logical selection
- * ranges (Zotero reader internals, see ZCTr-context-M1-plan.md §2).
- *
- * `view._selectionRanges` is an array with one entry per selected page:
- *   { anchorOffset, headOffset, text, position: { pageIndex, rects }, collapsed }
- * where anchorOffset/headOffset index into `view._pdfPages[pageIndex].chars`.
- * The ranges survive the right-click re-render that clears the native
- * selection (see common.ts getSelectedText).
- */
-
 import type {ViewLike} from "../../../types/reader";
 import * as zlog from "../../../utils/logger";
 
@@ -17,14 +6,9 @@ export interface SelectionOffsetRange {
 	/** Char offset into _pdfPages[pageIndex].chars (may be absent on old readers). */
 	anchorOffset?: number;
 	headOffset?: number;
-	/** Selected text of this page's range (always present). */
 	text: string;
 }
 
-/**
- * Read the logical selection ranges of a reader view. Returns [] on any
- * failure or when there is no usable (non-collapsed) selection.
- */
 export function getSelectionRanges(view: ViewLike | undefined): SelectionOffsetRange[] {
 	try {
 		const ranges = (view as any)?._selectionRanges;

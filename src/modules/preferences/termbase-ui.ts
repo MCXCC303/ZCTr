@@ -1,15 +1,3 @@
-/**
- * Termbase manager UI (P2-M2 / T5) - runs inside the preference pane and is
- * wired from prefs-ui.ts. Renders the "术语表" section (list + entry editor)
- * and delegates ALL domain logic to the terminology layer: it never matches,
- * resolves or serializes itself (see ZCTr-modules-ARCHITECTURE.md §2).
- *
- * Responsibilities:
- * - list / create / delete termbases (store)
- * - import TSV / CSV / JSON, export JSON (io + store)
- * - search, add / update / remove entries (model shapes + store)
- */
-
 import {reloadTermbases, saveTermbase, deleteTermbase} from "../terminology/store";
 import {
 	parseDelimited,
@@ -38,8 +26,6 @@ let selectedId: string | null = null;
 /** Concept being edited in the form (null = "add new entry" mode). */
 let editingConceptId: string | null = null;
 
-/** Max rendered rows in the entry list (large termbases: DOM rebuilds of tens
- * of thousands of nodes freeze the pane; search narrows the visible set). */
 const ENTRY_RENDER_LIMIT = 200;
 
 export async function registerTermbaseScripts(window: Window): Promise<void> {
@@ -79,7 +65,6 @@ function selectedTermbase(): Termbase | null {
 	return termbases.find((tb) => tb.termbaseId === selectedId) ?? null;
 }
 
-/** Persisted active termbase id (restored after restart). */
 function activeTermbaseId(): string {
 	return (getPref(PREFS.ACTIVE_TERMBASE_ID) as string) || "";
 }
@@ -88,7 +73,6 @@ function setActiveTermbase(id: string | null): void {
 	setPref(PREFS.ACTIVE_TERMBASE_ID, id ?? "");
 }
 
-/** Primary source / target terms of a concept (preferred first, then id). */
 function primaryTerm(entry: ConceptEntry, language: string): Term | undefined {
 	return entry.terms
 		.filter((t) => t.language === language)
@@ -99,14 +83,9 @@ function primaryTerm(entry: ConceptEntry, language: string): Term | undefined {
 		})[0];
 }
 
-// ---------------------------------------------------------------------------
-// Rendering
-// ---------------------------------------------------------------------------
+/// Rendering
 
 async function refreshTermbases(): Promise<void> {
-	// Always re-read from disk: the pane's "刷新" button must show externally
-	// added/modified termbase files, and the session listTermbases cache is
-	// replaced so subsequent translations see the same fresh list.
 	termbases = await reloadTermbases();
 	if (selectedId && !termbases.some((tb) => tb.termbaseId === selectedId)) {
 		selectedId = null;
@@ -147,20 +126,20 @@ function renderMeta(): void {
 	const tb = selectedTermbase();
 	meta!.textContent = tb
 		? getString("tb-meta", {
-			args: {
-				name: tb.name,
-				src: tb.sourceLanguage,
-				tgt: tb.targetLanguage,
-				count: tb.entries.length,
-				created: tb.updatedAt
-					? new Date(tb.updatedAt).toLocaleDateString()
-					: "-",
-				updated: tb.updatedAt
-					? new Date(tb.updatedAt).toLocaleDateString()
-					: "-",
-				description: tb.description ? tb.description : "-",
-			},
-		}) + "\n"
+		args: {
+			name: tb.name,
+			src: tb.sourceLanguage,
+			tgt: tb.targetLanguage,
+			count: tb.entries.length,
+			created: tb.updatedAt
+				? new Date(tb.updatedAt).toLocaleDateString()
+				: "-",
+			updated: tb.updatedAt
+				? new Date(tb.updatedAt).toLocaleDateString()
+				: "-",
+			description: tb.description ? tb.description : "-",
+		},
+	}) + "\n"
 		: getString("tb-meta-hint");
 }
 
@@ -184,9 +163,6 @@ function renderEntries(): void {
 		})
 		.sort((a, b) => a.conceptId.localeCompare(b.conceptId));
 
-	// Cap the rendered rows: building tens of thousands of DOM nodes on every
-	// interaction freezes the pane for seconds with large termbases. Search
-	// narrows the visible set; the hint explains the cap.
 	const visible = entries.slice(0, ENTRY_RENDER_LIMIT);
 	for (const entry of visible) {
 		const source = primaryTerm(entry, tb.sourceLanguage);
@@ -206,8 +182,7 @@ function renderEntries(): void {
 		row.addEventListener("click", () => {
 			editingConceptId = entry.conceptId;
 			loadEntryForm(tb, entry);
-			// In-place active swap - do NOT re-render the whole list (that is
-			// what froze the pane with large termbases).
+			// re-render whole list will freeze the pane with large termbases
 			container
 				.querySelectorAll<HTMLElement>(".zctr-termbase-entry.is-active")
 				.forEach((el: HTMLElement) => el.classList.remove("is-active"));
@@ -263,9 +238,7 @@ function setStatusMessage(message: string): void {
 	}, 3000);
 }
 
-// ---------------------------------------------------------------------------
-// Entry CRUD
-// ---------------------------------------------------------------------------
+/// Entry CRUD
 
 function formTermbase(): Termbase | null {
 	const tb = selectedTermbase();
@@ -276,7 +249,6 @@ function formTermbase(): Termbase | null {
 	return tb;
 }
 
-/** Build a 2-term concept from the form (used for add and update). */
 function formConcept(tb: Termbase, conceptId: string): ConceptEntry {
 	const sourceText = inputValue("zctr-termbase-src");
 	const targetText = inputValue("zctr-termbase-tgt");
@@ -381,15 +353,13 @@ async function persistAndRefresh(
 		);
 		return;
 	}
-	zlog.info(`词条操作: ${message} termbase=${tb.termbaseId} entries=${tb.entries.length}`);
+	zlog.info(`Entry operation: ${message} termbase=${tb.termbaseId} entries=${tb.entries.length}`);
 	editingConceptId = selectConceptId;
 	await refreshTermbases();
 	setStatusMessage(message);
 }
 
-// ---------------------------------------------------------------------------
-// Termbase CRUD + import/export
-// ---------------------------------------------------------------------------
+/// Termbase CRUD + import/export
 
 function slugify(name: string): string {
 	return (
@@ -446,7 +416,7 @@ async function createTermbase(): Promise<void> {
 		);
 		return;
 	}
-	zlog.info(`术语库已新建: ${termbase.termbaseId} (${termbase.sourceLanguage}→${termbase.targetLanguage})`);
+	zlog.info(`Termbase created: ${termbase.termbaseId} (${termbase.sourceLanguage}→${termbase.targetLanguage})`);
 	selectedId = termbase.termbaseId;
 	setActiveTermbase(selectedId);
 	await refreshTermbases();
@@ -465,7 +435,7 @@ async function removeTermbase(): Promise<void> {
 		return;
 	}
 	await deleteTermbase(tb.termbaseId);
-	zlog.info(`术语库已删除: ${tb.termbaseId}`);
+	zlog.info(`Termbase deleted: ${tb.termbaseId}`);
 	if (selectedId === tb.termbaseId) {
 		setActiveTermbase(null);
 	}
@@ -475,10 +445,8 @@ async function removeTermbase(): Promise<void> {
 	setStatusMessage(getString("tb-msg-deleted"));
 }
 
-/** Lazily load Zotero's own FilePicker wrapper (version-adaptive: it handles
- * the nsIFilePicker API changes between Firefox versions, e.g. show() ->
- * open(callback), and returns `file` as a path STRING). */
 let FilePickerCtor: any = null;
+
 function getFilePickerCtor(): any {
 	if (!FilePickerCtor) {
 		const mod = (ChromeUtils as any).importESModule(
@@ -489,8 +457,6 @@ function getFilePickerCtor(): any {
 	return FilePickerCtor;
 }
 
-/** Opens the native file picker; resolves to the selected PATH STRING (or
- * null on cancel/error). */
 function pickFile(title: string, save: boolean, defaultName: string): Promise<string | null> {
 	return new Promise((resolve) => {
 		if (!win) {
@@ -551,7 +517,6 @@ async function importTermbase(): Promise<void> {
 				return;
 			}
 		} else if (lower.endsWith(".tbx") || lower.endsWith(".xml")) {
-			// TBX has no language-pair concept; ask for the pair once.
 			const name = fileName.replace(/\.(tbx|xml)$/i, "") || getString("tb-import-default-name");
 			const pair = promptTermbasePair();
 			if (pair === null) {
@@ -587,7 +552,7 @@ async function importTermbase(): Promise<void> {
 			});
 		}
 		await saveTermbase(termbase);
-		zlog.info(`术语库已导入: ${termbase.termbaseId} (${lower}) entries=${termbase.entries.length}`);
+		zlog.info(`Termbase imported: ${termbase.termbaseId} (${lower}) entries=${termbase.entries.length}`);
 		selectedId = termbase.termbaseId;
 		setActiveTermbase(selectedId);
 		editingConceptId = null;
@@ -615,7 +580,7 @@ async function exportTermbaseTbx(): Promise<void> {
 	}
 	try {
 		await (Zotero.File as any).putContentsAsync(file, toTbx(tb));
-		zlog.info(`术语库已导出 TBX: ${tb.termbaseId} → ${file}`);
+		zlog.info(`Termbase exported as TBX: ${tb.termbaseId} → ${file}`);
 		setStatusMessage(getString("tb-msg-exported-tbx"));
 	} catch (error) {
 		setStatusMessage(
@@ -637,7 +602,7 @@ async function exportTermbase(): Promise<void> {
 	}
 	try {
 		await (Zotero.File as any).putContentsAsync(file, toJson(tb));
-		zlog.info(`术语库已导出 JSON: ${tb.termbaseId} → ${file}`);
+		zlog.info(`Termbase exported as JSON: ${tb.termbaseId} → ${file}`);
 		setStatusMessage(getString("tb-msg-exported-json"));
 	} catch (error) {
 		setStatusMessage(
@@ -648,10 +613,7 @@ async function exportTermbase(): Promise<void> {
 	}
 }
 
-/** Modal text prompt; returns null on cancel OR when the prompter fails
- * (Zotero 10 beta Prompter regressions degrade to cancel, never crash). */
-/** Ask for "source,target" (e.g. en,zh-CN); null on cancel/invalid. */
-function promptTermbasePair(): {source: string; target: string} | null {
+function promptTermbasePair(): { source: string; target: string } | null {
 	const languages = promptText(
 		getString("tb-import-title"),
 		getString("tb-pair-prompt"),
@@ -682,7 +644,6 @@ function promptText(title: string, message: string, defaultValue: string): strin
 	}
 }
 
-/** Non-throwing alert; failures are logged instead of breaking the flow. */
 function alertUser(title: string, message: string): void {
 	try {
 		Services.prompt.alert(win as any, title, message);
@@ -691,7 +652,6 @@ function alertUser(title: string, message: string): void {
 	}
 }
 
-/** Non-throwing confirm; false on cancel or prompter failure. */
 function confirmUser(message: string): boolean {
 	if (!win) {
 		return false;
@@ -704,16 +664,14 @@ function confirmUser(message: string): boolean {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Events
-// ---------------------------------------------------------------------------
+/// Events
 
 function bindEvents(): void {
 	get("zctr-termbase-select")?.addEventListener("change", (event) => {
 		selectedId = (event.target as HTMLSelectElement).value || null;
 		editingConceptId = null;
 		setActiveTermbase(selectedId);
-		zlog.info(`激活术语库变更: ${selectedId ?? "(无)"}`);
+		zlog.info(`Termbase activation changed: ${selectedId ?? "(none)"}`);
 		renderMeta();
 		renderEntries();
 	});

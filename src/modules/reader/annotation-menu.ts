@@ -1,11 +1,3 @@
-/**
- * "ZCTr 翻译" entry on the reader's annotation context menu.
- *
- * Right-clicking a highlighted/underlined annotation opens
- * `createAnnotationContextMenu`; the ZCTr entry translates the annotation's
- * highlighted text plus its comment.
- */
-
 import {
 	consumeReaderEntry,
 	getAnnotationText,

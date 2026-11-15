@@ -1,7 +1,3 @@
-/**
- * Provider form registry - maps each provider type to its form.
- */
-
 import type {ProviderType} from "../../provider/types";
 import type {ProviderForm} from "../provider-form";
 import {openaiForm} from "./openai";

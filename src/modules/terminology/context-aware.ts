@@ -1,22 +1,3 @@
-/**
- * Context-aware terminology matching - the Phase 2 entry point consumed by
- * the translation pipeline (P2 plan §5).
- *
- * Builds a TerminologyMatchInput from the frozen TranslationContext (the
- * selection is ALWAYS included) and produces the final MatchedTermSet:
- * effective termbases (by target language) -> match -> resolve -> merge.
- * Returns null when nothing matched or no termbase applies - the caller then
- * skips injection entirely (no block, no constraint, no cache material).
- *
- * MATCH SCOPE = the translation TARGET ONLY (`selectedText`). Injected term
- * constraints must cover the text being translated; terms that occur only in
- * the document summary / abstract / title (or the reference-only local
- * context) do not apply to the marked target - they would pollute the
- * request AND the cache fingerprint (the matched set changes with every
- * policy/layout variation while the actual translation target stays the
- * same).
- */
-
 import type {TranslationContext} from "../context/context";
 import {
 	DEFAULT_MAX_MATCHED_TERMS,
@@ -28,7 +9,6 @@ import {matchTermbase} from "./matcher";
 import {mergeMatchedSets, resolveConflicts} from "./conflict";
 import {effectiveTermbases} from "./scope";
 
-/** Assemble the match input from the frozen context contract. */
 export function buildMatchInput(
 	ctx: TranslationContext,
 	targetLanguage: string,
@@ -39,16 +19,6 @@ export function buildMatchInput(
 	};
 }
 
-/**
- * Match all effective termbases against the context. Deterministic, local,
- * zero network. Returns null when no termbase applies or nothing matched.
- *
- * When `opts.activeTermbaseId` is set, the match pool is restricted to that
- * termbase (the manager's "（激活）" selection): translations use exactly the
- * glossary the user picked, and unrelated glossaries (e.g. a desktop-UI
- * terminology collection) cannot pollute scientific translations or the cache
- * key. Unset -> all target-language-compatible termbases (backward compat).
- */
 export function matchForTranslation(
 	termbases: Termbase[],
 	ctx: TranslationContext,

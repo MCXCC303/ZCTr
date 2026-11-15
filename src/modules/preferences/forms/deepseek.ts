@@ -1,8 +1,3 @@
-/**
- * DeepSeek provider form: model dropdown (built-in base URL).
- * The API key is a shared field managed by the preferences pane.
- */
-
 import {inputValue, type ProviderForm, selectValue, setSelectValue, setVisible,} from "../provider-form";
 import {DEEPSEEK_MODELS, type ProviderConfig} from "../../provider/types";
 
