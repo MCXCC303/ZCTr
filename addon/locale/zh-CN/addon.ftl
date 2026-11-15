@@ -1,7 +1,3 @@
-# The build renames this file to `zctr-addon.ftl` and prefixes every id with
-# `zctr-`; getString() (src/utils/locale.ts) and the `data-l10n-id` attributes
-# in addon/content/preferences.xhtml use the same prefixed ids.
-
 # Add-on name
 addon-name = ZCTr
 
